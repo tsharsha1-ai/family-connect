@@ -128,7 +128,14 @@ export default function FamilyCalendar() {
     }
   };
 
-  const selectedDayEvents = selectedDate ? events.filter(e => e.event_date === selectedDate) : [];
+  const selectedDayEvents = selectedDate
+    ? events.filter(e => {
+        if (isRecurring(e.type)) {
+          return e.event_date.slice(5) === selectedDate.slice(5);
+        }
+        return e.event_date === selectedDate;
+      })
+    : [];
 
   return (
     <div className="flex-1 overflow-y-auto min-h-[calc(100vh-7.5rem)]">
