@@ -27,7 +27,6 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!user || !('serviceWorker' in navigator)) return;
     
-    // Check existing subscription
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();
       setIsSubscribed(!!sub);
@@ -52,22 +51,22 @@ export function usePushNotifications() {
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
-        });
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as ArrayBuffer,
         });
       }
 
       const subJson = sub.toJSON();
       
-      // Store subscription in database
-      await supabase.from('push_subscriptions').upsert({
-        user_id: user.id,
-        family_id: family.id,
-        endpoint: subJson.endpoint!,
-        p256dh: subJson.keys!.p256dh!,
-        auth: subJson.keys!.auth!,
-      }, { onConflict: 'user_id' });
+      // Store subscription in database via edge function to avoid type issues
+      const { error } = await supabase.functions.invoke('save-push-subscription', {
+        body: {
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys?.p256dh,
+          auth: subJson.keys?.auth,
+        },
+      });
 
+      if (error) throw error;
       setIsSubscribed(true);
     } catch (err) {
       console.error('Push subscription failed:', err);
@@ -85,7 +84,9 @@ export function usePushNotifications() {
       const sub = await reg.pushManager.getSubscription();
       if (sub) await sub.unsubscribe();
 
-      await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+      await supabase.functions.invoke('save-push-subscription', {
+        body: { action: 'unsubscribe' },
+      });
       setIsSubscribed(false);
     } catch (err) {
       console.error('Push unsubscribe failed:', err);
@@ -94,7 +95,7 @@ export function usePushNotifications() {
     }
   }, [user]);
 
-  const isSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
   return { permission, isSubscribed, isSupported, loading, subscribe, unsubscribe };
 }
