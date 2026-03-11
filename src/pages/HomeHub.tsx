@@ -48,7 +48,7 @@ export default function HomeHub() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3" style={{ height: 'calc(100vh - 7.5rem)' }}>
+    <div className="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3 min-h-[calc(100vh-7.5rem)]">
       {ZONES.map((zone, i) => (
         <motion.button
           key={zone.id}
