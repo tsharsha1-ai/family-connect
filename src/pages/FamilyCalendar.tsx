@@ -233,11 +233,12 @@ export default function FamilyCalendar() {
 
       {/* Add Event Modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end justify-center">
-          <div className="bg-popover w-full max-w-md rounded-t-2xl p-4 space-y-3 border-t border-border shadow-lg animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-[100] flex flex-col">
+          <div className="flex-1 bg-black/40" onClick={() => setShowAdd(false)} />
+          <div className="bg-popover w-full rounded-t-2xl p-5 pb-8 space-y-4 border-t border-border shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="font-display font-bold text-foreground">Add Event</h2>
-              <button onClick={() => setShowAdd(false)}>
+              <button onClick={() => setShowAdd(false)} className="p-1">
                 <X size={20} className="text-foreground" />
               </button>
             </div>
@@ -245,20 +246,22 @@ export default function FamilyCalendar() {
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               placeholder="Event name..."
-              className="w-full p-2.5 rounded-xl bg-muted border border-border font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              autoFocus
+              className="w-full p-3 rounded-xl bg-muted border border-border font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             <input
               type="date"
               value={newDate}
               onChange={e => setNewDate(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-muted border border-border font-body text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full p-3 rounded-xl bg-muted border border-border font-body text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             <div className="flex gap-2">
               {(['birthday', 'anniversary', 'travel'] as const).map(t => (
                 <button
                   key={t}
+                  type="button"
                   onClick={() => setNewType(t)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-display font-semibold capitalize transition-colors ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-display font-semibold capitalize transition-colors ${
                     newType === t
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground'
@@ -269,9 +272,10 @@ export default function FamilyCalendar() {
               ))}
             </div>
             <button
+              type="button"
               onClick={handleAddEvent}
               disabled={!newTitle.trim() || !newDate || saving}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-display font-semibold text-sm disabled:opacity-40"
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-display font-bold text-sm disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               {saving ? 'Saving...' : 'Add Event'}
             </button>
