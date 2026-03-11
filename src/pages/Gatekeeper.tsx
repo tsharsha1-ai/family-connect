@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import type { PersonaRole } from '@/types/family';
 import { PERSONA_CONFIG } from '@/types/family';
 
