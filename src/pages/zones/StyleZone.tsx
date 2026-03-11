@@ -132,12 +132,17 @@ export default function StyleZone() {
     if (!selectedFile || !user || !family) return;
     setUploading(true);
     try {
-      const ext = selectedFile.name.split('.').pop();
+      // Resize image client-side to reduce upload size
+      const resizedFile = await resizeImage(selectedFile, 1200);
+      const ext = 'jpeg';
       const filePath = `${user.id}/${Date.now()}.${ext}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('style-images')
-        .upload(filePath, selectedFile);
+        .upload(filePath, resizedFile, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
       if (uploadErr) throw uploadErr;
 
       const { data: { publicUrl } } = supabase.storage
@@ -159,10 +164,36 @@ export default function StyleZone() {
       setPreviewUrl(null);
       fetchPosts();
     } catch (err: any) {
+      console.error('Post upload error:', err);
       toast.error(err.message || 'Failed to post');
     } finally {
       setUploading(false);
     }
+  };
+
+  const resizeImage = (file: File, maxDim: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = (height / width) * maxDim; width = maxDim; }
+          else { width = (width / height) * maxDim; height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error('Failed to compress image')),
+          'image/jpeg',
+          0.8
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const deletePost = async (postId: string) => {
