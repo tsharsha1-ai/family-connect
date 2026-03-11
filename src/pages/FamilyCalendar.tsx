@@ -59,12 +59,40 @@ export default function FamilyCalendar() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startDay = getDay(monthStart);
 
+  const isRecurring = (type: string) => type === 'birthday' || type === 'anniversary';
+
   const getEventsForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return events.filter(e => e.event_date === dateStr);
+    const monthDay = format(date, 'MM-dd');
+    return events.filter(e => {
+      if (isRecurring(e.type)) {
+        return e.event_date.slice(5) === monthDay; // match MM-dd across any year
+      }
+      return e.event_date === dateStr;
+    });
   };
 
-  const upcomingEvents = events.filter(e => !isBefore(parseISO(e.event_date), new Date()));
+  const getUpcomingEvents = () => {
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const currentYear = today.getFullYear();
+
+    return events
+      .map(e => {
+        if (isRecurring(e.type)) {
+          // Project to current or next year
+          const thisYear = `${currentYear}-${e.event_date.slice(5)}`;
+          const nextYear = `${currentYear + 1}-${e.event_date.slice(5)}`;
+          const projected = thisYear >= todayStr ? thisYear : nextYear;
+          return { ...e, event_date: projected };
+        }
+        return e;
+      })
+      .filter(e => e.event_date >= todayStr)
+      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+  };
+
+  const upcomingEvents = getUpcomingEvents();
 
   const handleAddEvent = async () => {
     if (!newTitle.trim() || !newDate || !family) return;
