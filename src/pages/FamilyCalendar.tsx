@@ -30,7 +30,7 @@ export default function FamilyCalendar() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ height: 'calc(100vh - 7.5rem)' }}>
+    <div className="flex-1 overflow-y-auto min-h-[calc(100vh-7.5rem)]">
       <div className="p-4 space-y-4">
         {/* Month Nav */}
         <div className="flex items-center justify-between">

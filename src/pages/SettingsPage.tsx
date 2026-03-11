@@ -15,7 +15,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6" style={{ height: 'calc(100vh - 7.5rem)' }}>
+    <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[calc(100vh-7.5rem)]">
       {/* Family Code - dominant element */}
       <div className="text-center mb-8">
         <p className="text-sm font-body text-muted-foreground mb-2">Family Code</p>
