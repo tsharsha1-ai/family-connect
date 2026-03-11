@@ -2,9 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-// VAPID public key - generated for this project
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkGs-GDjN0fHfQ5nmFSm_H6H2Q7q9t3sVFlJLBEuFE';
-
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -23,6 +20,14 @@ export function usePushNotifications() {
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [vapidKey, setVapidKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch VAPID public key from edge function
+    supabase.functions.invoke('get-vapid-key').then(({ data }) => {
+      if (data?.vapidPublicKey) setVapidKey(data.vapidPublicKey);
+    });
+  }, []);
 
   useEffect(() => {
     if (!user || !('serviceWorker' in navigator)) return;
@@ -34,7 +39,7 @@ export function usePushNotifications() {
   }, [user]);
 
   const subscribe = useCallback(async () => {
-    if (!user || !family) return;
+    if (!user || !family || !vapidKey) return;
     setLoading(true);
 
     try {
@@ -51,13 +56,12 @@ export function usePushNotifications() {
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as ArrayBuffer,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
         });
       }
 
       const subJson = sub.toJSON();
       
-      // Store subscription in database via edge function to avoid type issues
       const { error } = await supabase.functions.invoke('save-push-subscription', {
         body: {
           endpoint: subJson.endpoint,
@@ -73,7 +77,7 @@ export function usePushNotifications() {
     } finally {
       setLoading(false);
     }
-  }, [user, family]);
+  }, [user, family, vapidKey]);
 
   const unsubscribe = useCallback(async () => {
     if (!user) return;
