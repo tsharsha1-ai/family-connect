@@ -28,7 +28,7 @@ export default function Gatekeeper() {
     const code = generateCode();
     const { data, error: err } = await supabase
       .from('families')
-      .insert({ name: familyName.trim(), access_code: code, created_by: 'pending' })
+      .insert({ name: familyName.trim(), access_code: code })
       .select()
       .single();
 
