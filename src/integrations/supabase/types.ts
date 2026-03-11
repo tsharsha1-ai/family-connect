@@ -14,16 +14,300 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blessings: {
+        Row: {
+          content: string
+          created_at: string
+          family_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          family_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          family_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blessings_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      families: {
+        Row: {
+          access_code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          access_code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          access_code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      family_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          family_id: string
+          id: string
+          title: string
+          type: Database["public"]["Enums"]["event_type"]
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          family_id: string
+          id?: string
+          title: string
+          type?: Database["public"]["Enums"]["event_type"]
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          family_id?: string
+          id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["event_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_events_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_scores: {
+        Row: {
+          created_at: string
+          family_id: string
+          game: string
+          id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          game?: string
+          id?: string
+          score: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          game?: string
+          id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_scores_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      predictions: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          points_earned: number
+          predicted_winner: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          points_earned?: number
+          predicted_winner: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          points_earned?: number
+          predicted_winner?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          family_id: string
+          id: string
+          is_admin: boolean
+          role: Database["public"]["Enums"]["persona_role"]
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          family_id: string
+          id: string
+          is_admin?: boolean
+          role?: Database["public"]["Enums"]["persona_role"]
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          family_id?: string
+          id?: string
+          is_admin?: boolean
+          role?: Database["public"]["Enums"]["persona_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      style_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "style_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      style_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "style_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      style_posts: {
+        Row: {
+          caption: string | null
+          created_at: string
+          family_id: string
+          id: string
+          image_url: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          family_id: string
+          id?: string
+          image_url: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          family_id?: string
+          id?: string
+          image_url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_posts_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_family_id: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      event_type: "birthday" | "anniversary" | "travel"
+      persona_role: "kid" | "man" | "woman" | "elder"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +434,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      event_type: ["birthday", "anniversary", "travel"],
+      persona_role: ["kid", "man", "woman", "elder"],
+    },
   },
 } as const
