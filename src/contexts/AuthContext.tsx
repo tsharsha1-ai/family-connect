@@ -46,40 +46,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const initialize = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-          await fetchProfile(currentUser.id);
-        }
-      } catch (err) {
-        console.error('Auth init error:', err);
-      } finally {
-        if (mounted) setLoading(false);
+    // 1. Restore session from storage
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        try { await fetchProfile(currentUser.id); } catch (e) { console.error('Profile fetch:', e); }
       }
-    };
+      setLoading(false);
+    }).catch(() => {
+      if (mounted) setLoading(false);
+    });
 
-    initialize();
-
+    // 2. Listen for subsequent auth changes (don't await inside)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (!mounted) return;
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         if (currentUser) {
-          try {
-            await fetchProfile(currentUser.id);
-          } catch (err) {
-            console.error('Profile fetch error:', err);
-          }
+          fetchProfile(currentUser.id).catch(console.error);
         } else {
           setProfile(null);
           setFamily(null);
         }
-        setLoading(false);
       }
     );
 
