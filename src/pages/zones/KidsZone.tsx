@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const EMOJIS = ['🐹', '🏏', '🍬', '🎈', '⭐', '🦋'];
 const GAME_DURATION = 30;
@@ -13,13 +15,66 @@ interface Mole {
   id: number;
 }
 
+interface LeaderboardEntry {
+  display_name: string;
+  score: number;
+}
+
 export default function KidsZone() {
   const navigate = useNavigate();
+  const { user, profile, family } = useAuth();
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'done'>('idle');
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [moles, setMoles] = useState<Mole[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const moleIdRef = useRef(0);
+  const scoreSavedRef = useRef(false);
+
+  const fetchLeaderboard = useCallback(async () => {
+    if (!family?.id) return;
+    const { data } = await supabase
+      .from('game_scores')
+      .select('score, user_id')
+      .eq('family_id', family.id)
+      .eq('game', 'whack-a-mole')
+      .order('score', { ascending: false })
+      .limit(5);
+
+    if (!data || data.length === 0) {
+      setLeaderboard([]);
+      return;
+    }
+
+    // Fetch display names for the user_ids
+    const userIds = [...new Set(data.map(d => d.user_id))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', userIds);
+
+    const nameMap = new Map(profiles?.map(p => [p.id, p.display_name]) ?? []);
+    setLeaderboard(data.map(d => ({
+      display_name: nameMap.get(d.user_id) || 'Unknown',
+      score: d.score,
+    })));
+  }, [family?.id]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  const saveScore = useCallback(async (finalScore: number) => {
+    if (!user?.id || !family?.id || scoreSavedRef.current) return;
+    scoreSavedRef.current = true;
+    await supabase.from('game_scores').insert({
+      user_id: user.id,
+      family_id: family.id,
+      score: finalScore,
+      game: 'whack-a-mole',
+    });
+    fetchLeaderboard();
+  }, [user?.id, family?.id, fetchLeaderboard]);
 
   const spawnMole = useCallback(() => {
     const index = Math.floor(Math.random() * GRID_SIZE);
@@ -39,15 +94,26 @@ export default function KidsZone() {
 
   useEffect(() => {
     if (gameState !== 'playing') return;
-    if (timeLeft <= 0) { setGameState('done'); return; }
+    if (timeLeft <= 0) {
+      setGameState('done');
+      return;
+    }
     const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
     return () => clearTimeout(timer);
   }, [gameState, timeLeft]);
+
+  // Save score when game ends
+  useEffect(() => {
+    if (gameState === 'done') {
+      saveScore(score);
+    }
+  }, [gameState, score, saveScore]);
 
   const startGame = () => {
     setScore(0);
     setTimeLeft(GAME_DURATION);
     setMoles([]);
+    scoreSavedRef.current = false;
     setGameState('playing');
   };
 
@@ -137,18 +203,25 @@ export default function KidsZone() {
           </div>
         )}
 
-        {/* Leaderboard placeholder */}
+        {/* Leaderboard */}
         <div className="w-full max-w-xs mt-4">
           <h3 className="font-display font-bold text-foreground flex items-center gap-2 mb-2">
             <Trophy size={16} className="text-kids-accent" /> Junior Top 5
           </h3>
           <div className="bg-popover rounded-xl p-3 space-y-2 border border-border">
-            {[{ name: 'Play to set a score!', score: '-' }].map((entry, i) => (
-              <div key={i} className="flex justify-between font-body text-sm text-muted-foreground">
-                <span>{entry.name}</span>
-                <span>{entry.score}</span>
+            {leaderboard.length === 0 ? (
+              <div className="flex justify-between font-body text-sm text-muted-foreground">
+                <span>Play to set a score!</span>
+                <span>-</span>
               </div>
-            ))}
+            ) : (
+              leaderboard.map((entry, i) => (
+                <div key={i} className="flex justify-between font-body text-sm text-muted-foreground">
+                  <span>{i + 1}. {entry.display_name}</span>
+                  <span className="font-bold text-kids-accent">{entry.score}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
