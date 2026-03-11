@@ -1,0 +1,16 @@
+{
+  "name": "Family Adda",
+  "short_name": "Adda",
+  "description": "Your family's private digital veranda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F1EC",
+  "theme_color": "#F4F1EC",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
