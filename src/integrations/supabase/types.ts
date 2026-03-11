@@ -169,6 +169,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string
           family_id: string
@@ -177,6 +178,7 @@ export type Database = {
           role: Database["public"]["Enums"]["persona_role"]
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name: string
           family_id: string
@@ -185,6 +187,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["persona_role"]
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string
           family_id?: string
