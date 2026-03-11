@@ -14,6 +14,7 @@ export interface Profile {
   display_name: string;
   role: PersonaRole;
   is_admin: boolean;
+  avatar_url?: string | null;
   created_at: string;
 }
 

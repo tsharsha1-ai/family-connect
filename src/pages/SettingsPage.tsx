@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { Copy, Check, LogOut, Bell, BellOff } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Copy, Check, LogOut, Bell, BellOff, Camera } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { family, profile, signOut } = useAuth();
+  const { user, family, profile, signOut, refreshProfile } = useAuth();
   const { isSupported, isSubscribed, loading, subscribe, unsubscribe, permission } = usePushNotifications();
   const [copied, setCopied] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const copyCode = () => {
     if (family?.access_code) {
@@ -25,9 +29,90 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      // Upload to storage (upsert)
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update profile with cache-busting URL
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await refreshProfile();
+      toast.success('Profile picture updated!');
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const avatarUrl = (profile as any)?.avatar_url;
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[calc(100vh-7.5rem)]">
-      {/* Family Code - dominant element */}
+      {/* Avatar */}
+      <div className="relative mb-4">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative w-24 h-24 rounded-full overflow-hidden border-3 border-primary bg-muted flex items-center justify-center group"
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-4xl">{profile?.role === 'kid' ? '🪁' : profile?.role === 'woman' ? '🌸' : profile?.role === 'elder' ? '🪷' : '🏏'}</span>
+          )}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Camera size={24} className="text-white" />
+          </div>
+        </button>
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarUpload}
+          className="hidden"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground font-body mb-6">Tap to change photo</p>
+
+      {/* Family Code */}
       <div className="text-center mb-8">
         <p className="text-sm font-body text-muted-foreground mb-2">Family Code</p>
         <p className="font-display font-black text-5xl tracking-[0.3em] text-foreground">
