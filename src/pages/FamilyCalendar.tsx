@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, getDay } from 'date-fns';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, getDay, isBefore, parseISO } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
-const SAMPLE_EVENTS = [
-  { date: '2026-03-15', title: "Dadi's Birthday", type: 'birthday' as const },
-  { date: '2026-03-28', title: '25th Anniversary', type: 'anniversary' as const },
-  { date: '2026-04-10', title: 'Goa Trip', type: 'travel' as const },
-];
+interface FamilyEvent {
+  id: string;
+  title: string;
+  event_date: string;
+  type: 'birthday' | 'anniversary' | 'travel';
+  created_at: string;
+}
 
 const EVENT_COLORS: Record<string, string> = {
   birthday: 'bg-kids-accent',
@@ -14,10 +19,40 @@ const EVENT_COLORS: Record<string, string> = {
   travel: 'bg-green-500',
 };
 
+const EVENT_EMOJI: Record<string, string> = {
+  birthday: '🎂',
+  anniversary: '💍',
+  travel: '✈️',
+};
+
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export default function FamilyCalendar() {
+  const { user, family } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [events, setEvents] = useState<FamilyEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Add event form
+  const [newTitle, setNewTitle] = useState('');
+  const [newDate, setNewDate] = useState('');
+  const [newType, setNewType] = useState<'birthday' | 'anniversary' | 'travel'>('birthday');
+  const [saving, setSaving] = useState(false);
+
+  const fetchEvents = useCallback(async () => {
+    if (!family?.id) return;
+    const { data } = await supabase
+      .from('family_events')
+      .select('id, title, event_date, type, created_at')
+      .eq('family_id', family.id)
+      .order('event_date', { ascending: true });
+    setEvents(data ?? []);
+    setLoading(false);
+  }, [family?.id]);
+
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -26,13 +61,51 @@ export default function FamilyCalendar() {
 
   const getEventsForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return SAMPLE_EVENTS.filter(e => e.date === dateStr);
+    return events.filter(e => e.event_date === dateStr);
   };
+
+  const upcomingEvents = events.filter(e => !isBefore(parseISO(e.event_date), new Date()));
+
+  const handleAddEvent = async () => {
+    if (!newTitle.trim() || !newDate || !family) return;
+    setSaving(true);
+    const { error } = await supabase.from('family_events').insert({
+      family_id: family.id,
+      title: newTitle.trim(),
+      event_date: newDate,
+      type: newType,
+    });
+    if (error) { toast.error('Failed to add event'); setSaving(false); return; }
+    toast.success('Event added! 🎉');
+    setShowAdd(false);
+    setNewTitle('');
+    setNewDate('');
+    setNewType('birthday');
+    setSaving(false);
+    fetchEvents();
+  };
+
+  const deleteEvent = async (id: string) => {
+    await supabase.from('family_events').delete().eq('id', id);
+    setEvents(prev => prev.filter(e => e.id !== id));
+    toast.success('Event removed');
+  };
+
+  const handleDayClick = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    if (selectedDate === dateStr) {
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(dateStr);
+    }
+  };
+
+  const selectedDayEvents = selectedDate ? events.filter(e => e.event_date === selectedDate) : [];
 
   return (
     <div className="flex-1 overflow-y-auto min-h-[calc(100vh-7.5rem)]">
       <div className="p-4 space-y-4">
-        {/* Month Nav */}
+        {/* Month Nav + Add */}
         <div className="flex items-center justify-between">
           <button onClick={() => setCurrentMonth(m => subMonths(m, 1))} className="p-2">
             <ChevronLeft size={20} className="text-foreground" />
@@ -40,9 +113,17 @@ export default function FamilyCalendar() {
           <h2 className="font-display font-bold text-lg text-foreground">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
-          <button onClick={() => setCurrentMonth(m => addMonths(m, 1))} className="p-2">
-            <ChevronRight size={20} className="text-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentMonth(m => addMonths(m, 1))} className="p-2">
+              <ChevronRight size={20} className="text-foreground" />
+            </button>
+            <button
+              onClick={() => { setShowAdd(true); setNewDate(format(new Date(), 'yyyy-MM-dd')); }}
+              className="p-1.5 bg-primary rounded-full"
+            >
+              <Plus size={16} className="text-primary-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Calendar Grid */}
@@ -56,27 +137,57 @@ export default function FamilyCalendar() {
             <div key={`empty-${i}`} />
           ))}
           {days.map(day => {
-            const events = getEventsForDate(day);
+            const dayEvents = getEventsForDate(day);
             const today = isToday(day);
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const isSelected = selectedDate === dateStr;
             return (
-              <div
+              <button
                 key={day.toISOString()}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-body relative ${
-                  today ? 'bg-primary text-primary-foreground font-bold' : 'text-foreground'
+                onClick={() => handleDayClick(day)}
+                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-body relative transition-colors ${
+                  today ? 'bg-primary text-primary-foreground font-bold' :
+                  isSelected ? 'bg-accent ring-2 ring-primary' :
+                  'text-foreground hover:bg-accent/50'
                 } ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
               >
                 {format(day, 'd')}
-                {events.length > 0 && (
+                {dayEvents.length > 0 && (
                   <div className="flex gap-0.5 mt-0.5">
-                    {events.map((e, i) => (
+                    {dayEvents.map((e, i) => (
                       <div key={i} className={`w-1.5 h-1.5 rounded-full ${EVENT_COLORS[e.type]}`} />
                     ))}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
+
+        {/* Selected Day Events */}
+        {selectedDate && (
+          <div className="space-y-2">
+            <h3 className="font-display font-semibold text-sm text-foreground">
+              {format(parseISO(selectedDate), 'EEEE, MMM d')}
+            </h3>
+            {selectedDayEvents.length === 0 ? (
+              <p className="text-xs text-muted-foreground font-body">No events on this day</p>
+            ) : (
+              selectedDayEvents.map(event => (
+                <div key={event.id} className="flex items-center gap-3 bg-popover rounded-lg p-3 border border-border">
+                  <span className="text-lg">{EVENT_EMOJI[event.type]}</span>
+                  <div className="flex-1">
+                    <p className="font-body font-semibold text-sm text-foreground">{event.title}</p>
+                    <p className="font-body text-xs text-muted-foreground capitalize">{event.type}</p>
+                  </div>
+                  <button onClick={() => deleteEvent(event.id)} className="p-1 text-muted-foreground">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Legend */}
         <div className="flex gap-4 justify-center">
@@ -95,17 +206,78 @@ export default function FamilyCalendar() {
         {/* Upcoming Events */}
         <div className="space-y-2">
           <h3 className="font-display font-bold text-foreground">Upcoming</h3>
-          {SAMPLE_EVENTS.map((event, i) => (
-            <div key={i} className="flex items-center gap-3 bg-popover rounded-lg p-3 border border-border">
-              <div className={`w-3 h-3 rounded-full ${EVENT_COLORS[event.type]}`} />
-              <div className="flex-1">
-                <p className="font-body font-semibold text-sm text-foreground">{event.title}</p>
-                <p className="font-body text-xs text-muted-foreground">{event.date}</p>
-              </div>
+          {loading ? (
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          ))}
+          ) : upcomingEvents.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground font-body py-4">No upcoming events</p>
+          ) : (
+            upcomingEvents.slice(0, 5).map(event => (
+              <div key={event.id} className="flex items-center gap-3 bg-popover rounded-lg p-3 border border-border">
+                <span className="text-lg">{EVENT_EMOJI[event.type]}</span>
+                <div className="flex-1">
+                  <p className="font-body font-semibold text-sm text-foreground">{event.title}</p>
+                  <p className="font-body text-xs text-muted-foreground">
+                    {format(parseISO(event.event_date), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                <button onClick={() => deleteEvent(event.id)} className="p-1 text-muted-foreground">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {/* Add Event Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end justify-center">
+          <div className="bg-popover w-full max-w-md rounded-t-2xl p-4 space-y-3 border-t border-border shadow-lg animate-in slide-in-from-bottom">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display font-bold text-foreground">Add Event</h2>
+              <button onClick={() => setShowAdd(false)}>
+                <X size={20} className="text-foreground" />
+              </button>
+            </div>
+            <input
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder="Event name..."
+              className="w-full p-2.5 rounded-xl bg-muted border border-border font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <input
+              type="date"
+              value={newDate}
+              onChange={e => setNewDate(e.target.value)}
+              className="w-full p-2.5 rounded-xl bg-muted border border-border font-body text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <div className="flex gap-2">
+              {(['birthday', 'anniversary', 'travel'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setNewType(t)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-display font-semibold capitalize transition-colors ${
+                    newType === t
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {EVENT_EMOJI[t]} {t}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleAddEvent}
+              disabled={!newTitle.trim() || !newDate || saving}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-display font-semibold text-sm disabled:opacity-40"
+            >
+              {saving ? 'Saving...' : 'Add Event'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
