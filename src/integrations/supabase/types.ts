@@ -105,6 +105,47 @@ export type Database = {
           },
         ]
       }
+      family_members: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string
+          family_id: string
+          id: string
+          is_admin: boolean
+          role: Database["public"]["Enums"]["persona_role"]
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name: string
+          family_id: string
+          id?: string
+          is_admin?: boolean
+          role?: Database["public"]["Enums"]["persona_role"]
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string
+          family_id?: string
+          id?: string
+          is_admin?: boolean
+          role?: Database["public"]["Enums"]["persona_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_scores: {
         Row: {
           created_at: string
@@ -345,6 +386,7 @@ export type Database = {
     }
     Functions: {
       get_user_family_id: { Args: never; Returns: string }
+      user_is_family_member: { Args: { fid: string }; Returns: boolean }
     }
     Enums: {
       event_type: "birthday" | "anniversary" | "travel"
