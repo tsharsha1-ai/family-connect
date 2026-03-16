@@ -2,12 +2,12 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, LogOut, Bell, BellOff, Camera } from 'lucide-react';
+import { Copy, Check, LogOut, Bell, BellOff, Camera, Users } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { user, family, profile, signOut, refreshProfile } = useAuth();
+  const { user, family, profile, memberships, signOut, refreshProfile, setActiveFamily } = useAuth();
   const { isSupported, isSubscribed, loading, subscribe, unsubscribe, permission } = usePushNotifications();
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -29,9 +29,11 @@ export default function SettingsPage() {
     }
   };
 
+  const activeMembership = memberships.find(m => m.family_id === profile?.family_id);
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !activeMembership) return;
 
     if (!file.type.startsWith('image/')) {
       toast.error('Please select an image file');
@@ -47,24 +49,23 @@ export default function SettingsPage() {
       const ext = file.name.split('.').pop();
       const filePath = `${user.id}/avatar.${ext}`;
 
-      // Upload to storage (upsert)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Update profile with cache-busting URL
       const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+      
+      // Update family_members avatar
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from('family_members')
         .update({ avatar_url: avatarUrl })
-        .eq('id', user.id);
+        .eq('id', activeMembership.id);
 
       if (updateError) throw updateError;
 
@@ -77,7 +78,7 @@ export default function SettingsPage() {
     }
   };
 
-  const avatarUrl = (profile as any)?.avatar_url;
+  const avatarUrl = profile?.avatar_url;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[calc(100vh-7.5rem)]">
@@ -140,6 +141,21 @@ export default function SettingsPage() {
           <p className="font-display font-semibold text-foreground">{profile?.display_name}</p>
           <p className="text-xs text-muted-foreground font-body capitalize">{profile?.role}</p>
         </div>
+
+        {/* Families count */}
+        {memberships.length > 1 && (
+          <div className="bg-popover rounded-xl p-4 border border-border flex items-center gap-3">
+            <Users size={20} className="text-primary" />
+            <div>
+              <p className="font-display font-semibold text-sm text-foreground">
+                Member of {memberships.length} families
+              </p>
+              <p className="text-xs text-muted-foreground font-body">
+                Switch from the header
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Push Notifications Toggle */}
         {isSupported && (

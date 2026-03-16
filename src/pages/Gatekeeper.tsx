@@ -79,8 +79,8 @@ export default function Gatekeeper() {
       await supabase.from('families').update({ created_by: authData.user.id }).eq('id', familyId);
     }
 
-    // Create profile
-    const { error: profErr } = await supabase.from('profiles').insert({
+    // Create profile (legacy, for backward compat)
+    await supabase.from('profiles').insert({
       id: authData.user.id,
       family_id: familyId,
       display_name: displayName.trim(),
@@ -88,9 +88,17 @@ export default function Gatekeeper() {
       is_admin: isAdmin,
     });
 
-    if (profErr) { setError(profErr.message); setLoading(false); return; }
+    // Create family_members entry
+    const { error: memErr } = await supabase.from('family_members').insert({
+      user_id: authData.user.id,
+      family_id: familyId,
+      display_name: displayName.trim(),
+      role: persona,
+      is_admin: isAdmin,
+    });
+
+    if (memErr) { setError(memErr.message); setLoading(false); return; }
     setLoading(false);
-    // Auth state change will handle redirect
   };
 
   const handleLogin = async () => {

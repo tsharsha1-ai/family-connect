@@ -18,6 +18,18 @@ export interface Profile {
   created_at: string;
 }
 
+/** A user's membership in a specific family */
+export interface FamilyMember {
+  id: string;
+  user_id: string;
+  family_id: string;
+  display_name: string;
+  role: PersonaRole;
+  is_admin: boolean;
+  avatar_url?: string | null;
+  created_at: string;
+}
+
 export interface Prediction {
   id: string;
   user_id: string;
