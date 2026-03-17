@@ -214,8 +214,8 @@ export default function StyleZone() {
 
     if (data && data.length > 0) {
       const userIds = [...new Set(data.map(c => c.user_id))];
-      const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', userIds);
-      const nameMap = new Map(profiles?.map(p => [p.id, p.display_name]) ?? []);
+      const { data: members } = await supabase.from('family_members').select('user_id, display_name').eq('family_id', family!.id);
+      const nameMap = new Map(members?.map((m: any) => [m.user_id, m.display_name]) ?? []);
       setComments(data.map(c => ({ ...c, display_name: nameMap.get(c.user_id) || 'Unknown' })));
     } else {
       setComments([]);
