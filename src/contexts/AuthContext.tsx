@@ -66,12 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setMemberships(mapped);
 
-    // Auto-select active family if none set or invalid
+    // If stored family is invalid, clear it — don't auto-select
     const stored = localStorage.getItem(ACTIVE_FAMILY_KEY);
-    if (mapped.length > 0 && (!stored || !mapped.find(m => m.family_id === stored))) {
-      const firstId = mapped[0].family_id;
-      localStorage.setItem(ACTIVE_FAMILY_KEY, firstId);
-      setActiveFamilyId(firstId);
+    if (stored && !mapped.find(m => m.family_id === stored)) {
+      localStorage.removeItem(ACTIVE_FAMILY_KEY);
+      setActiveFamilyId(null);
     }
   }, []);
 
