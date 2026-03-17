@@ -77,7 +77,7 @@ export default function StyleZone() {
     commentsRes.data?.forEach(c => commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1));
 
     setPosts(postsData.map(p => {
-      const prof = profileMap.get(p.user_id);
+      const member = memberMap.get(p.user_id);
       return {
         id: p.id,
         user_id: p.user_id,
