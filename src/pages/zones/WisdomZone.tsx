@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Send, Heart, AtSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface FamilyMemberOption {
-  id: string;       // family_members.id
+  id: string;
   user_id: string;
   display_name: string;
 }
@@ -24,83 +25,78 @@ interface Blessing {
   liked_by_me: boolean;
 }
 
-export default function WisdomZone() {
-  const navigate = useNavigate();
-  const { user, profile, family } = useAuth();
-  const [blessing, setBlessing] = useState('');
-  const [blessings, setBlessings] = useState<Blessing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [videoUrl, setVideoUrl] = useState('');
-
-  // Tagging
-  const [members, setMembers] = useState<FamilyMemberOption[]>([]);
-  const [taggedMember, setTaggedMember] = useState<FamilyMemberOption | null>(null);
-  const [showMemberPicker, setShowMemberPicker] = useState(false);
-  const [memberSearch, setMemberSearch] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Fetch family members for tagging
-  useEffect(() => {
-    if (!family?.id) return;
+async function fetchBlessingsData(familyId: string, userId: string) {
+  // Parallelize all three queries
+  const [blessingsRes, membersRes] = await Promise.all([
+    supabase
+      .from('blessings')
+      .select('id, content, created_at, user_id, tagged_member_id')
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: false })
+      .limit(20),
     supabase
       .from('family_members')
       .select('id, user_id, display_name')
-      .eq('family_id', family.id)
-      .then(({ data }) => {
-        if (data) setMembers(data);
-      });
-  }, [family?.id]);
+      .eq('family_id', familyId),
+  ]);
 
-  const fetchBlessings = useCallback(async () => {
-    if (!family?.id || !user) return;
-    const { data } = await supabase
-      .from('blessings')
-      .select('id, content, created_at, user_id, tagged_member_id')
-      .eq('family_id', family.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
+  const blessings = blessingsRes.data || [];
+  const members = membersRes.data || [];
 
-    if (!data || data.length === 0) {
-      setBlessings([]);
-      setLoading(false);
-      return;
-    }
+  if (blessings.length === 0) return { blessings: [] as Blessing[], members };
 
-    // Get display names from family_members
-    const { data: fmData } = await supabase
-      .from('family_members')
-      .select('id, user_id, display_name')
-      .eq('family_id', family.id);
+  const blessingIds = blessings.map(b => b.id);
+  const { data: likes } = await supabase
+    .from('blessing_likes')
+    .select('blessing_id, user_id')
+    .in('blessing_id', blessingIds);
 
-    const nameByUserId = new Map(fmData?.map(m => [m.user_id, m.display_name]) ?? []);
-    const nameByMemberId = new Map(fmData?.map(m => [m.id, m.display_name]) ?? []);
+  const nameByUserId = new Map(members.map(m => [m.user_id, m.display_name]));
+  const nameByMemberId = new Map(members.map(m => [m.id, m.display_name]));
 
-    // Get like counts
-    const blessingIds = data.map(b => b.id);
-    const { data: likes } = await supabase
-      .from('blessing_likes')
-      .select('blessing_id, user_id')
-      .in('blessing_id', blessingIds);
+  const likeCounts = new Map<string, number>();
+  const myLikes = new Set<string>();
+  likes?.forEach(l => {
+    likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
+    if (l.user_id === userId) myLikes.add(l.blessing_id);
+  });
 
-    const likeCounts = new Map<string, number>();
-    const myLikes = new Set<string>();
-    likes?.forEach(l => {
-      likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
-      if (l.user_id === user.id) myLikes.add(l.blessing_id);
-    });
-
-    setBlessings(data.map(b => ({
+  return {
+    blessings: blessings.map(b => ({
       ...b,
       display_name: nameByUserId.get(b.user_id) || 'Someone',
       tagged_name: b.tagged_member_id ? nameByMemberId.get(b.tagged_member_id) || null : null,
       like_count: likeCounts.get(b.id) || 0,
       liked_by_me: myLikes.has(b.id),
-    })));
-    setLoading(false);
-  }, [family?.id, user]);
+    })) as Blessing[],
+    members,
+  };
+}
 
-  useEffect(() => { fetchBlessings(); }, [fetchBlessings]);
+export default function WisdomZone() {
+  const navigate = useNavigate();
+  const { user, profile, family } = useAuth();
+  const queryClient = useQueryClient();
+  const [blessing, setBlessing] = useState('');
+  const [sending, setSending] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+
+  // Tagging
+  const [taggedMember, setTaggedMember] = useState<FamilyMemberOption | null>(null);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['wisdom-blessings', family?.id, user?.id],
+    queryFn: () => fetchBlessingsData(family!.id, user!.id),
+    enabled: !!family?.id && !!user?.id,
+  });
+
+  const blessings = data?.blessings ?? [];
+  const members = data?.members ?? [];
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['wisdom-blessings', family?.id, user?.id] });
 
   const sendBlessing = async () => {
     if (!blessing.trim() || !user || !family) return;
@@ -116,17 +112,23 @@ export default function WisdomZone() {
     setBlessing('');
     setTaggedMember(null);
     setSending(false);
-    fetchBlessings();
+    invalidate();
   };
 
   const toggleLike = async (blessingId: string, currentlyLiked: boolean) => {
     if (!user) return;
-    // Optimistic update
-    setBlessings(prev => prev.map(b =>
-      b.id === blessingId
-        ? { ...b, liked_by_me: !currentlyLiked, like_count: b.like_count + (currentlyLiked ? -1 : 1) }
-        : b
-    ));
+    // Optimistic update via query cache
+    queryClient.setQueryData(['wisdom-blessings', family?.id, user?.id], (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        blessings: old.blessings.map((b: Blessing) =>
+          b.id === blessingId
+            ? { ...b, liked_by_me: !currentlyLiked, like_count: b.like_count + (currentlyLiked ? -1 : 1) }
+            : b
+        ),
+      };
+    });
 
     if (currentlyLiked) {
       await supabase.from('blessing_likes').delete().eq('blessing_id', blessingId).eq('user_id', user.id);
@@ -174,15 +176,11 @@ export default function WisdomZone() {
             Share a Blessing
           </h2>
 
-          {/* Tagged person chip */}
           {taggedMember && (
             <div className="flex items-center gap-2 bg-wisdom/20 rounded-lg px-3 py-1.5 w-fit">
               <AtSign size={14} className="text-wisdom-accent" />
               <span className="font-body text-sm text-foreground">{taggedMember.display_name}</span>
-              <button
-                onClick={() => setTaggedMember(null)}
-                className="text-muted-foreground hover:text-foreground text-xs ml-1"
-              >✕</button>
+              <button onClick={() => setTaggedMember(null)} className="text-muted-foreground hover:text-foreground text-xs ml-1">✕</button>
             </div>
           )}
 
@@ -196,7 +194,6 @@ export default function WisdomZone() {
           />
 
           <div className="flex gap-2">
-            {/* Tag button */}
             <div className="relative">
               <button
                 onClick={() => setShowMemberPicker(!showMemberPicker)}
@@ -209,7 +206,6 @@ export default function WisdomZone() {
                 <AtSign size={14} /> Tag
               </button>
 
-              {/* Member picker dropdown */}
               <AnimatePresence>
                 {showMemberPicker && (
                   <motion.div
@@ -333,6 +329,7 @@ export default function WisdomZone() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
                 allowFullScreen
                 title="Devotional Video"
+                loading="lazy"
               />
             </div>
           )}

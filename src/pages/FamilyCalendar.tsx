@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, getDay, isBefore, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, getDay, parseISO } from 'date-fns';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -29,30 +30,30 @@ const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export default function FamilyCalendar() {
   const { user, family } = useAuth();
+  const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [events, setEvents] = useState<FamilyEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Add event form
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newType, setNewType] = useState<'birthday' | 'anniversary' | 'travel'>('birthday');
   const [saving, setSaving] = useState(false);
 
-  const fetchEvents = useCallback(async () => {
-    if (!family?.id) return;
-    const { data } = await supabase
-      .from('family_events')
-      .select('id, title, event_date, type, created_at')
-      .eq('family_id', family.id)
-      .order('event_date', { ascending: true });
-    setEvents(data ?? []);
-    setLoading(false);
-  }, [family?.id]);
+  const { data: events = [], isLoading: loading } = useQuery({
+    queryKey: ['family-events', family?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('family_events')
+        .select('id, title, event_date, type, created_at')
+        .eq('family_id', family!.id)
+        .order('event_date', { ascending: true });
+      return (data ?? []) as FamilyEvent[];
+    },
+    enabled: !!family?.id,
+  });
 
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['family-events', family?.id] });
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -65,9 +66,7 @@ export default function FamilyCalendar() {
     const dateStr = format(date, 'yyyy-MM-dd');
     const monthDay = format(date, 'MM-dd');
     return events.filter(e => {
-      if (isRecurring(e.type)) {
-        return e.event_date.slice(5) === monthDay; // match MM-dd across any year
-      }
+      if (isRecurring(e.type)) return e.event_date.slice(5) === monthDay;
       return e.event_date === dateStr;
     });
   };
@@ -80,7 +79,6 @@ export default function FamilyCalendar() {
     return events
       .map(e => {
         if (isRecurring(e.type)) {
-          // Project to current or next year
           const thisYear = `${currentYear}-${e.event_date.slice(5)}`;
           const nextYear = `${currentYear + 1}-${e.event_date.slice(5)}`;
           const projected = thisYear >= todayStr ? thisYear : nextYear;
@@ -110,29 +108,25 @@ export default function FamilyCalendar() {
     setNewDate('');
     setNewType('birthday');
     setSaving(false);
-    fetchEvents();
+    invalidate();
   };
 
   const deleteEvent = async (id: string) => {
     await supabase.from('family_events').delete().eq('id', id);
-    setEvents(prev => prev.filter(e => e.id !== id));
+    queryClient.setQueryData(['family-events', family?.id], (old: FamilyEvent[] | undefined) =>
+      (old ?? []).filter(e => e.id !== id)
+    );
     toast.success('Event removed');
   };
 
   const handleDayClick = (day: Date) => {
     const dateStr = format(day, 'yyyy-MM-dd');
-    if (selectedDate === dateStr) {
-      setSelectedDate(null);
-    } else {
-      setSelectedDate(dateStr);
-    }
+    setSelectedDate(selectedDate === dateStr ? null : dateStr);
   };
 
   const selectedDayEvents = selectedDate
     ? events.filter(e => {
-        if (isRecurring(e.type)) {
-          return e.event_date.slice(5) === selectedDate.slice(5);
-        }
+        if (isRecurring(e.type)) return e.event_date.slice(5) === selectedDate.slice(5);
         return e.event_date === selectedDate;
       })
     : [];
@@ -140,7 +134,6 @@ export default function FamilyCalendar() {
   return (
     <div className="flex-1 overflow-y-auto min-h-[calc(100vh-7.5rem)]">
       <div className="p-4 space-y-4">
-        {/* Month Nav + Add */}
         <div className="flex items-center justify-between">
           <button onClick={() => setCurrentMonth(m => subMonths(m, 1))} className="p-2">
             <ChevronLeft size={20} className="text-foreground" />
@@ -161,19 +154,14 @@ export default function FamilyCalendar() {
           </div>
         </div>
 
-        {/* Calendar Grid */}
         <div className="grid grid-cols-7 gap-1">
           {DAYS.map(d => (
-            <div key={d} className="text-center text-xs font-display font-semibold text-muted-foreground py-2">
-              {d}
-            </div>
+            <div key={d} className="text-center text-xs font-display font-semibold text-muted-foreground py-2">{d}</div>
           ))}
-          {Array.from({ length: startDay }).map((_, i) => (
-            <div key={`empty-${i}`} />
-          ))}
+          {Array.from({ length: startDay }).map((_, i) => <div key={`empty-${i}`} />)}
           {days.map(day => {
             const dayEvents = getEventsForDate(day);
-            const today = isToday(day);
+            const todayFlag = isToday(day);
             const dateStr = format(day, 'yyyy-MM-dd');
             const isSelected = selectedDate === dateStr;
             return (
@@ -181,7 +169,7 @@ export default function FamilyCalendar() {
                 key={day.toISOString()}
                 onClick={() => handleDayClick(day)}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-body relative transition-colors ${
-                  today ? 'bg-primary text-primary-foreground font-bold' :
+                  todayFlag ? 'bg-primary text-primary-foreground font-bold' :
                   isSelected ? 'bg-accent ring-2 ring-primary' :
                   'text-foreground hover:bg-accent/50'
                 } ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
@@ -199,7 +187,6 @@ export default function FamilyCalendar() {
           })}
         </div>
 
-        {/* Selected Day Events */}
         {selectedDate && (
           <div className="space-y-2">
             <h3 className="font-display font-semibold text-sm text-foreground">
@@ -224,7 +211,6 @@ export default function FamilyCalendar() {
           </div>
         )}
 
-        {/* Legend */}
         <div className="flex gap-4 justify-center">
           {[
             { label: 'Birthday', color: 'bg-kids-accent' },
@@ -238,7 +224,6 @@ export default function FamilyCalendar() {
           ))}
         </div>
 
-        {/* Upcoming Events */}
         <div className="space-y-2">
           <h3 className="font-display font-bold text-foreground">Upcoming</h3>
           {loading ? (
@@ -266,7 +251,6 @@ export default function FamilyCalendar() {
         </div>
       </div>
 
-      {/* Add Event Modal */}
       {showAdd && (
         <div className="fixed inset-0 z-[100] flex flex-col">
           <div className="flex-1 bg-black/40" onClick={() => setShowAdd(false)} />
@@ -297,9 +281,7 @@ export default function FamilyCalendar() {
                   type="button"
                   onClick={() => setNewType(t)}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-display font-semibold capitalize transition-colors ${
-                    newType === t
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
+                    newType === t ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {EVENT_EMOJI[t]} {t}

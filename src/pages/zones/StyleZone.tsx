@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Heart, MessageCircle, Plus, Send, X, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -27,11 +28,52 @@ interface Comment {
   display_name: string;
 }
 
+async function fetchPostsData(familyId: string, userId: string): Promise<PostWithMeta[]> {
+  const { data: postsData, error } = await supabase
+    .from('style_posts')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('created_at', { ascending: false });
+
+  if (error || !postsData) return [];
+
+  const postIds = postsData.map(p => p.id);
+
+  const [membersRes, likesRes, myLikesRes, commentsRes] = await Promise.all([
+    supabase.from('family_members').select('user_id, display_name, avatar_url').eq('family_id', familyId),
+    supabase.from('style_likes').select('post_id').in('post_id', postIds),
+    supabase.from('style_likes').select('post_id').in('post_id', postIds).eq('user_id', userId),
+    supabase.from('style_comments').select('post_id').in('post_id', postIds),
+  ]);
+
+  const memberMap = new Map(membersRes.data?.map((m: any) => [m.user_id, m]) ?? []);
+  const likeCounts = new Map<string, number>();
+  likesRes.data?.forEach(l => likeCounts.set(l.post_id, (likeCounts.get(l.post_id) || 0) + 1));
+  const myLikes = new Set(myLikesRes.data?.map(l => l.post_id) ?? []);
+  const commentCounts = new Map<string, number>();
+  commentsRes.data?.forEach(c => commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1));
+
+  return postsData.map(p => {
+    const member = memberMap.get(p.user_id);
+    return {
+      id: p.id,
+      user_id: p.user_id,
+      image_url: p.image_url,
+      caption: p.caption,
+      created_at: p.created_at,
+      display_name: member?.display_name || 'Unknown',
+      avatar_url: member?.avatar_url || null,
+      like_count: likeCounts.get(p.id) || 0,
+      comment_count: commentCounts.get(p.id) || 0,
+      liked_by_me: myLikes.has(p.id),
+    };
+  });
+}
+
 export default function StyleZone() {
   const navigate = useNavigate();
   const { user, profile, family } = useAuth();
-  const [posts, setPosts] = useState<PostWithMeta[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showNewPost, setShowNewPost] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState('');
@@ -39,64 +81,20 @@ export default function StyleZone() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Comments state
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
 
-  const fetchPosts = useCallback(async () => {
-    if (!family?.id || !user?.id) return;
+  const queryKey = ['style-posts', family?.id, user?.id];
 
-    const { data: postsData, error } = await supabase
-      .from('style_posts')
-      .select('*')
-      .eq('family_id', family.id)
-      .order('created_at', { ascending: false });
+  const { data: posts = [], isLoading: loading } = useQuery({
+    queryKey,
+    queryFn: () => fetchPostsData(family!.id, user!.id),
+    enabled: !!family?.id && !!user?.id,
+  });
 
-    if (error || !postsData) {
-      setLoading(false);
-      return;
-    }
-
-    // Fetch profiles, likes, comments counts
-    const postIds = postsData.map(p => p.id);
-
-    const [membersRes, likesRes, myLikesRes, commentsRes] = await Promise.all([
-      supabase.from('family_members').select('user_id, display_name, avatar_url').eq('family_id', family.id),
-      supabase.from('style_likes').select('post_id').in('post_id', postIds),
-      supabase.from('style_likes').select('post_id').in('post_id', postIds).eq('user_id', user.id),
-      supabase.from('style_comments').select('post_id').in('post_id', postIds),
-    ]);
-
-    const memberMap = new Map(membersRes.data?.map((m: any) => [m.user_id, m]) ?? []);
-    const likeCounts = new Map<string, number>();
-    likesRes.data?.forEach(l => likeCounts.set(l.post_id, (likeCounts.get(l.post_id) || 0) + 1));
-    const myLikes = new Set(myLikesRes.data?.map(l => l.post_id) ?? []);
-    const commentCounts = new Map<string, number>();
-    commentsRes.data?.forEach(c => commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1));
-
-    setPosts(postsData.map(p => {
-      const member = memberMap.get(p.user_id);
-      return {
-        id: p.id,
-        user_id: p.user_id,
-        image_url: p.image_url,
-        caption: p.caption,
-        created_at: p.created_at,
-        display_name: member?.display_name || 'Unknown',
-        avatar_url: member?.avatar_url || null,
-        like_count: likeCounts.get(p.id) || 0,
-        comment_count: commentCounts.get(p.id) || 0,
-        liked_by_me: myLikes.has(p.id),
-      };
-    }));
-    setLoading(false);
-  }, [family?.id, user?.id]);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
   const toggleLike = async (postId: string) => {
     if (!user) return;
@@ -104,11 +102,13 @@ export default function StyleZone() {
     if (!post) return;
 
     // Optimistic update
-    setPosts(prev => prev.map(p =>
-      p.id === postId
-        ? { ...p, liked_by_me: !p.liked_by_me, like_count: p.like_count + (p.liked_by_me ? -1 : 1) }
-        : p
-    ));
+    queryClient.setQueryData(queryKey, (old: PostWithMeta[] | undefined) =>
+      (old ?? []).map(p =>
+        p.id === postId
+          ? { ...p, liked_by_me: !p.liked_by_me, like_count: p.like_count + (p.liked_by_me ? -1 : 1) }
+          : p
+      )
+    );
 
     if (post.liked_by_me) {
       await supabase.from('style_likes').delete().eq('post_id', postId).eq('user_id', user.id);
@@ -131,22 +131,15 @@ export default function StyleZone() {
     if (!selectedFile || !user || !family) return;
     setUploading(true);
     try {
-      // Resize image client-side to reduce upload size
       const resizedFile = await resizeImage(selectedFile, 1200);
-      const ext = 'jpeg';
-      const filePath = `${user.id}/${Date.now()}.${ext}`;
+      const filePath = `${user.id}/${Date.now()}.jpeg`;
 
       const { error: uploadErr } = await supabase.storage
         .from('style-images')
-        .upload(filePath, resizedFile, {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
+        .upload(filePath, resizedFile, { contentType: 'image/jpeg', upsert: true });
       if (uploadErr) throw uploadErr;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('style-images')
-        .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage.from('style-images').getPublicUrl(filePath);
 
       const { error: insertErr } = await supabase.from('style_posts').insert({
         user_id: user.id,
@@ -161,7 +154,7 @@ export default function StyleZone() {
       setCaption('');
       setSelectedFile(null);
       setPreviewUrl(null);
-      fetchPosts();
+      invalidate();
     } catch (err: any) {
       console.error('Post upload error:', err);
       toast.error(err.message || 'Failed to post');
@@ -198,11 +191,12 @@ export default function StyleZone() {
   const deletePost = async (postId: string) => {
     if (!user) return;
     await supabase.from('style_posts').delete().eq('id', postId).eq('user_id', user.id);
-    setPosts(prev => prev.filter(p => p.id !== postId));
+    queryClient.setQueryData(queryKey, (old: PostWithMeta[] | undefined) =>
+      (old ?? []).filter(p => p.id !== postId)
+    );
     toast.success('Post deleted');
   };
 
-  // Comments
   const openCommentsPanel = async (postId: string) => {
     setOpenComments(postId);
     setLoadingComments(true);
@@ -213,7 +207,6 @@ export default function StyleZone() {
       .order('created_at', { ascending: true });
 
     if (data && data.length > 0) {
-      const userIds = [...new Set(data.map(c => c.user_id))];
       const { data: members } = await supabase.from('family_members').select('user_id, display_name').eq('family_id', family!.id);
       const nameMap = new Map(members?.map((m: any) => [m.user_id, m.display_name]) ?? []);
       setComments(data.map(c => ({ ...c, display_name: nameMap.get(c.user_id) || 'Unknown' })));
@@ -239,15 +232,16 @@ export default function StyleZone() {
       user_id: user.id,
       display_name: profile?.display_name || 'You',
     }]);
-    setPosts(prev => prev.map(p =>
-      p.id === openComments ? { ...p, comment_count: p.comment_count + 1 } : p
-    ));
+    queryClient.setQueryData(queryKey, (old: PostWithMeta[] | undefined) =>
+      (old ?? []).map(p =>
+        p.id === openComments ? { ...p, comment_count: p.comment_count + 1 } : p
+      )
+    );
     setNewComment('');
   };
 
   return (
     <motion.div layoutId="zone-style" className="min-h-screen bg-style-bg">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-style/30 border-b border-style sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/')} className="p-1">
@@ -255,22 +249,12 @@ export default function StyleZone() {
           </button>
           <h1 className="font-display font-bold text-xl text-style-accent">✨ Style Circle</h1>
         </div>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-2 bg-primary rounded-full"
-        >
+        <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-primary rounded-full">
           <Plus size={18} className="text-primary-foreground" />
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       </div>
 
-      {/* Posts Feed */}
       <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 3.5rem)' }}>
         {loading ? (
           <div className="flex items-center justify-center py-16">
@@ -288,7 +272,7 @@ export default function StyleZone() {
               <div className="px-4 py-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {post.avatar_url ? (
-                    <img src={post.avatar_url} className="w-7 h-7 rounded-full object-cover" alt="" />
+                    <img src={post.avatar_url} className="w-7 h-7 rounded-full object-cover" alt="" loading="lazy" />
                   ) : (
                     <div className="w-7 h-7 rounded-full bg-style/50 flex items-center justify-center text-xs">🌸</div>
                   )}
@@ -300,14 +284,11 @@ export default function StyleZone() {
                   </button>
                 )}
               </div>
-              <img src={post.image_url} alt={post.caption || ''} className="w-full aspect-square object-cover" />
+              <img src={post.image_url} alt={post.caption || ''} className="w-full aspect-square object-cover" loading="lazy" />
               <div className="px-4 py-3 space-y-2">
                 <div className="flex items-center gap-4">
                   <button onClick={() => toggleLike(post.id)} className="flex items-center gap-1">
-                    <Heart
-                      size={22}
-                      className={post.liked_by_me ? 'fill-kids-accent text-kids-accent' : 'text-style-accent'}
-                    />
+                    <Heart size={22} className={post.liked_by_me ? 'fill-kids-accent text-kids-accent' : 'text-style-accent'} />
                     <span className="text-sm font-body text-style-accent">{post.like_count}</span>
                   </button>
                   <button onClick={() => openCommentsPanel(post.id)} className="flex items-center gap-1">
@@ -326,25 +307,15 @@ export default function StyleZone() {
         )}
       </div>
 
-      {/* New Post Dialog */}
       <AnimatePresence>
         {showNewPost && previewUrl && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-background/95 flex flex-col"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-background/95 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <button onClick={() => { setShowNewPost(false); setSelectedFile(null); setPreviewUrl(null); setCaption(''); }}>
                 <X size={24} className="text-foreground" />
               </button>
               <h2 className="font-display font-bold text-foreground">New Post</h2>
-              <button
-                onClick={submitPost}
-                disabled={uploading}
-                className="font-display font-bold text-primary disabled:opacity-50"
-              >
+              <button onClick={submitPost} disabled={uploading} className="font-display font-bold text-primary disabled:opacity-50">
                 {uploading ? 'Posting...' : 'Share'}
               </button>
             </div>
@@ -361,7 +332,6 @@ export default function StyleZone() {
         )}
       </AnimatePresence>
 
-      {/* Comments Panel */}
       <AnimatePresence>
         {openComments && (
           <motion.div
@@ -390,9 +360,7 @@ export default function StyleZone() {
                     <p className="font-body text-sm text-foreground">
                       <span className="font-semibold">{c.display_name}</span>{' '}{c.content}
                     </p>
-                    <p className="text-xs text-muted-foreground font-body">
-                      {new Date(c.created_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-muted-foreground font-body">{new Date(c.created_at).toLocaleDateString()}</p>
                   </div>
                 ))
               )}
