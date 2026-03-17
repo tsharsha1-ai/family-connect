@@ -60,11 +60,10 @@ export default function StyleZone() {
     }
 
     // Fetch profiles, likes, comments counts
-    const userIds = [...new Set(postsData.map(p => p.user_id))];
     const postIds = postsData.map(p => p.id);
 
-    const [profilesRes, likesRes, myLikesRes, commentsRes] = await Promise.all([
-      supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds),
+    const [membersRes, likesRes, myLikesRes, commentsRes] = await Promise.all([
+      supabase.from('family_members').select('user_id, display_name, avatar_url').eq('family_id', family.id),
       supabase.from('style_likes').select('post_id').in('post_id', postIds),
       supabase.from('style_likes').select('post_id').in('post_id', postIds).eq('user_id', user.id),
       supabase.from('style_comments').select('post_id').in('post_id', postIds),
