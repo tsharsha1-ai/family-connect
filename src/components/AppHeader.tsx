@@ -4,14 +4,18 @@ import { PERSONA_CONFIG } from '@/types/family';
 import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-export default function AppHeader() {
+export default function AppHeader({ isHome = false }: { isHome?: boolean }) {
   const { profile, family, memberships, setActiveFamily } = useAuth();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const personaConfig = profile?.role ? PERSONA_CONFIG[profile.role] : null;
   const hasMultipleFamilies = memberships.length > 1;
 
   return (
-    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between">
+    <header className={`sticky top-0 z-40 backdrop-blur-sm px-4 py-3 flex items-center justify-between ${
+      isHome
+        ? 'bg-transparent border-b border-white/20'
+        : 'bg-background/80 border-b border-border'
+    }`}>
       <div className="flex items-center gap-2 relative">
         {personaConfig && (
           <span className="text-xl" title={personaConfig.label}>
