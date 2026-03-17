@@ -40,7 +40,7 @@ export default function AppShell() {
   const isHome = location.pathname === '/';
 
   return (
-    <div className={`flex flex-col min-h-screen ${isHome ? 'bg-gradient-to-b from-[hsl(var(--shell-from))] to-[hsl(var(--shell-to))]' : 'bg-background'}`}>
+    <div className={`flex flex-col min-h-screen pb-16 ${isHome ? 'bg-gradient-to-b from-[hsl(var(--shell-from))] to-[hsl(var(--shell-to))]' : 'bg-background'}`}>
       <AppHeader isHome={isHome} />
       <Suspense fallback={<ZoneLoader />}>
         <Routes>
