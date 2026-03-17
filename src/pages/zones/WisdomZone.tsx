@@ -342,30 +342,47 @@ export default function WisdomZone() {
           )}
         </div>
 
-        {/* Devotional Video */}
+        {/* Devotional Songs */}
         <div className="space-y-2">
           <h2 className="font-display font-semibold text-sm text-wisdom-accent uppercase tracking-wide">
             Devotional Songs
           </h2>
-          <input
-            type="url"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="Paste YouTube link..."
-            className="w-full p-2.5 rounded-xl bg-popover border border-wisdom/60 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-wisdom-accent/30"
-          />
-          {ytId && (
-            <div className="rounded-xl overflow-hidden border border-wisdom/50 shadow-sm">
-              <iframe
-                src={`https://www.youtube.com/embed/${ytId}`}
-                className="w-full aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
-                allowFullScreen
-                title="Devotional Video"
-                loading="lazy"
-              />
-            </div>
-          )}
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={songUrl}
+              onChange={(e) => setSongUrl(e.target.value)}
+              placeholder="Paste YouTube link..."
+              className="flex-1 p-2.5 rounded-xl bg-popover border border-wisdom/60 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-wisdom-accent/30"
+            />
+            <button
+              onClick={sendSong}
+              disabled={!getYouTubeId(songUrl) || sendingSong}
+              className="px-4 py-2.5 bg-wisdom-accent text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center gap-2 disabled:opacity-40 transition-opacity"
+            >
+              <Send size={14} /> {sendingSong ? '...' : 'Share'}
+            </button>
+          </div>
+          {songs.map(s => {
+            const id = getYouTubeId(s.youtube_url);
+            if (!id) return null;
+            return (
+              <div key={s.id} className="rounded-xl overflow-hidden border border-wisdom/50 shadow-sm bg-popover">
+                <div className="px-3 py-2 flex justify-between items-center">
+                  <span className="font-display font-semibold text-sm text-wisdom-accent">Shared by {s.display_name}</span>
+                  <span className="text-xs text-muted-foreground font-body">{timeAgo(s.created_at)}</span>
+                </div>
+                <iframe
+                  src={`https://www.youtube.com/embed/${id}`}
+                  className="w-full aspect-video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  allowFullScreen
+                  title="Devotional Video"
+                  loading="lazy"
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </motion.div>
