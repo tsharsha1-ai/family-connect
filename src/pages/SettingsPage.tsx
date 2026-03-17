@@ -184,24 +184,22 @@ export default function SettingsPage() {
             </div>
 
             {/* Activity Notifications Toggle */}
-            {isSubscribed && (
-              <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageSquare size={20} className={activityEnabled ? 'text-primary' : 'text-muted-foreground'} />
-                  <div>
-                    <p className="font-display font-semibold text-sm text-foreground">Activity Updates</p>
-                    <p className="text-xs text-muted-foreground font-body">
-                      Posts, blessings, scores & polls
-                    </p>
-                  </div>
+            <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MessageSquare size={20} className={activityEnabled && isSubscribed ? 'text-primary' : 'text-muted-foreground'} />
+                <div>
+                  <p className="font-display font-semibold text-sm text-foreground">Activity Updates</p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    {!isSubscribed ? 'Enable event reminders first' : 'Posts, blessings, scores & polls'}
+                  </p>
                 </div>
-                <Switch
-                  checked={activityEnabled}
-                  onCheckedChange={toggleActivityNotifications}
-                  disabled={loading}
-                />
               </div>
-            )}
+              <Switch
+                checked={activityEnabled && isSubscribed}
+                onCheckedChange={toggleActivityNotifications}
+                disabled={loading || !isSubscribed}
+              />
+            </div>
           </div>
         )}
 
