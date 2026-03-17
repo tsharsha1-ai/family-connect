@@ -419,6 +419,7 @@ export type Database = {
           family_id: string
           id: string
           notify_on_activity: boolean
+          notify_on_events: boolean
           p256dh: string
           user_id: string
         }
@@ -429,6 +430,7 @@ export type Database = {
           family_id: string
           id?: string
           notify_on_activity?: boolean
+          notify_on_events?: boolean
           p256dh: string
           user_id: string
         }
@@ -439,6 +441,7 @@ export type Database = {
           family_id?: string
           id?: string
           notify_on_activity?: boolean
+          notify_on_events?: boolean
           p256dh?: string
           user_id?: string
         }

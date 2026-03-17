@@ -1,0 +1,1 @@
+ALTER TABLE public.push_subscriptions ADD COLUMN IF NOT EXISTS notify_on_events boolean NOT NULL DEFAULT true;
