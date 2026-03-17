@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
       const { data: subs } = await supabase
         .from("push_subscriptions")
         .select("*")
-        .eq("family_id", event.family_id);
+        .eq("family_id", event.family_id)
+        .eq("notify_on_events", true);
 
       if (!subs || subs.length === 0) continue;
 
