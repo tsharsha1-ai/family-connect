@@ -113,6 +113,7 @@ export default function WisdomZone() {
 
   const blessings = data?.blessings ?? [];
   const members = data?.members ?? [];
+  const songs = data?.songs ?? [];
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['wisdom-blessings', family?.id, user?.id] });
 
