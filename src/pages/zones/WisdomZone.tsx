@@ -166,7 +166,21 @@ export default function WisdomZone() {
     return match?.[1] || null;
   };
 
-  const ytId = getYouTubeId(videoUrl);
+  const sendSong = async () => {
+    const ytId = getYouTubeId(songUrl);
+    if (!ytId || !user || !family) return;
+    setSendingSong(true);
+    const { error } = await supabase.from('devotional_songs').insert({
+      user_id: user.id,
+      family_id: family.id,
+      youtube_url: songUrl.trim(),
+    });
+    if (error) { toast.error('Failed to share song'); setSendingSong(false); return; }
+    toast.success('Song shared 🎵');
+    setSongUrl('');
+    setSendingSong(false);
+    invalidate();
+  };
 
   const timeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
