@@ -159,27 +159,49 @@ export default function SettingsPage() {
 
         {/* Push Notifications Toggle */}
         {isSupported && (
-          <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {isSubscribed ? (
-                <Bell size={20} className="text-primary" />
-              ) : (
-                <BellOff size={20} className="text-muted-foreground" />
-              )}
-              <div>
-                <p className="font-display font-semibold text-sm text-foreground">Event Reminders</p>
-                <p className="text-xs text-muted-foreground font-body">
-                  {permission === 'denied'
-                    ? 'Blocked in browser settings'
-                    : 'Get notified before family events'}
-                </p>
+          <div className="space-y-3">
+            <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isSubscribed ? (
+                  <Bell size={20} className="text-primary" />
+                ) : (
+                  <BellOff size={20} className="text-muted-foreground" />
+                )}
+                <div>
+                  <p className="font-display font-semibold text-sm text-foreground">Event Reminders</p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    {permission === 'denied'
+                      ? 'Blocked in browser settings'
+                      : 'Get notified before family events'}
+                  </p>
+                </div>
               </div>
+              <Switch
+                checked={isSubscribed}
+                onCheckedChange={handleNotificationToggle}
+                disabled={loading || permission === 'denied'}
+              />
             </div>
-            <Switch
-              checked={isSubscribed}
-              onCheckedChange={handleNotificationToggle}
-              disabled={loading || permission === 'denied'}
-            />
+
+            {/* Activity Notifications Toggle */}
+            {isSubscribed && (
+              <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MessageSquare size={20} className={activityEnabled ? 'text-primary' : 'text-muted-foreground'} />
+                  <div>
+                    <p className="font-display font-semibold text-sm text-foreground">Activity Updates</p>
+                    <p className="text-xs text-muted-foreground font-body">
+                      Posts, blessings, scores & polls
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={activityEnabled}
+                  onCheckedChange={toggleActivityNotifications}
+                  disabled={loading}
+                />
+              </div>
+            )}
           </div>
         )}
 
