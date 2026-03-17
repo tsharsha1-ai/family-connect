@@ -25,9 +25,15 @@ interface Blessing {
   liked_by_me: boolean;
 }
 
+interface SharedSong {
+  id: string;
+  youtube_url: string;
+  created_at: string;
+  display_name: string;
+}
+
 async function fetchBlessingsData(familyId: string, userId: string) {
-  // Parallelize all three queries
-  const [blessingsRes, membersRes] = await Promise.all([
+  const [blessingsRes, membersRes, songsRes] = await Promise.all([
     supabase
       .from('blessings')
       .select('id, content, created_at, user_id, tagged_member_id')
@@ -38,28 +44,35 @@ async function fetchBlessingsData(familyId: string, userId: string) {
       .from('family_members')
       .select('id, user_id, display_name')
       .eq('family_id', familyId),
+    supabase
+      .from('devotional_songs')
+      .select('id, youtube_url, created_at, user_id')
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: false })
+      .limit(20),
   ]);
 
   const blessings = blessingsRes.data || [];
   const members = membersRes.data || [];
-
-  if (blessings.length === 0) return { blessings: [] as Blessing[], members };
-
-  const blessingIds = blessings.map(b => b.id);
-  const { data: likes } = await supabase
-    .from('blessing_likes')
-    .select('blessing_id, user_id')
-    .in('blessing_id', blessingIds);
+  const songs = songsRes.data || [];
 
   const nameByUserId = new Map(members.map(m => [m.user_id, m.display_name]));
   const nameByMemberId = new Map(members.map(m => [m.id, m.display_name]));
 
-  const likeCounts = new Map<string, number>();
-  const myLikes = new Set<string>();
-  likes?.forEach(l => {
-    likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
-    if (l.user_id === userId) myLikes.add(l.blessing_id);
-  });
+  let likeCounts = new Map<string, number>();
+  let myLikes = new Set<string>();
+
+  if (blessings.length > 0) {
+    const blessingIds = blessings.map(b => b.id);
+    const { data: likes } = await supabase
+      .from('blessing_likes')
+      .select('blessing_id, user_id')
+      .in('blessing_id', blessingIds);
+    likes?.forEach(l => {
+      likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
+      if (l.user_id === userId) myLikes.add(l.blessing_id);
+    });
+  }
 
   return {
     blessings: blessings.map(b => ({
@@ -70,6 +83,10 @@ async function fetchBlessingsData(familyId: string, userId: string) {
       liked_by_me: myLikes.has(b.id),
     })) as Blessing[],
     members,
+    songs: songs.map(s => ({
+      ...s,
+      display_name: nameByUserId.get(s.user_id) || 'Someone',
+    })) as SharedSong[],
   };
 }
 
