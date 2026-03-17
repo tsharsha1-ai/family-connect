@@ -6,56 +6,56 @@
 
 @layer base {
   :root {
-    /* Shell Palette - Warm Parchment */
-    --background: 30 27% 94%; /* #F4F1EC */
-    --foreground: 0 0% 29%; /* #4A4A4A Charcoal */
+    /* Shell Palette - Warm Coral Gradient */
+    --background: 15 90% 60%; /* Coral-orange */
+    --foreground: 0 0% 100%; /* White text */
 
-    --card: 30 27% 94%;
-    --card-foreground: 0 0% 29%;
+    --card: 15 90% 60%;
+    --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 29%;
 
-    --primary: 211 100% 50%; /* #007BFF Action Blue */
+    --primary: 330 80% 55%; /* Pink-magenta */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 20% 88%;
-    --secondary-foreground: 0 0% 29%;
+    --secondary: 15 80% 65%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 30 15% 90%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 15 60% 70%;
+    --muted-foreground: 0 0% 90%;
 
-    --accent: 30 20% 88%;
-    --accent-foreground: 0 0% 29%;
+    --accent: 15 80% 65%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 15% 85%;
-    --input: 30 15% 85%;
-    --ring: 211 100% 50%;
+    --border: 15 60% 70%;
+    --input: 15 60% 70%;
+    --ring: 330 80% 55%;
 
     --radius: 1rem;
 
-    /* Zone: Kids */
-    --kids-primary: 44 100% 62%;
-    --kids-accent: 348 90% 55%;
-    --kids-bg: 44 100% 92%;
+    /* Zone: Kids - Purple/Magenta gradient */
+    --kids-primary: 280 70% 60%;
+    --kids-accent: 300 80% 65%;
+    --kids-bg: 285 75% 58%;
 
-    /* Zone: IPL Arena */
-    --arena-primary: 220 60% 22%;
+    /* Zone: IPL Arena - Deep navy */
+    --arena-primary: 220 60% 18%;
     --arena-accent: 42 100% 55%;
-    --arena-bg: 220 50% 16%;
+    --arena-bg: 220 55% 20%;
 
-    /* Zone: Style Circle */
-    --style-primary: 330 55% 65%;
-    --style-accent: 330 60% 42%;
-    --style-bg: 330 40% 92%;
+    /* Zone: Style Circle - Pink */
+    --style-primary: 340 80% 70%;
+    --style-accent: 340 90% 65%;
+    --style-bg: 340 85% 72%;
 
-    /* Zone: Wisdom Well */
-    --wisdom-primary: 32 80% 55%;
-    --wisdom-accent: 24 75% 35%;
-    --wisdom-bg: 38 60% 93%;
+    /* Zone: Wisdom Well - Orange/Amber */
+    --wisdom-primary: 32 95% 55%;
+    --wisdom-accent: 32 100% 50%;
+    --wisdom-bg: 30 95% 58%;
 
     /* Bottom nav */
     --nav-bg: 0 0% 100%;
