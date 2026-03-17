@@ -96,7 +96,8 @@ export default function WisdomZone() {
   const queryClient = useQueryClient();
   const [blessing, setBlessing] = useState('');
   const [sending, setSending] = useState(false);
-  const [videoUrl, setVideoUrl] = useState('');
+  const [songUrl, setSongUrl] = useState('');
+  const [sendingSong, setSendingSong] = useState(false);
 
   // Tagging
   const [taggedMember, setTaggedMember] = useState<FamilyMemberOption | null>(null);
