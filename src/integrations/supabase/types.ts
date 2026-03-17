@@ -85,6 +85,38 @@ export type Database = {
           },
         ]
       }
+      devotional_songs: {
+        Row: {
+          created_at: string
+          family_id: string
+          id: string
+          user_id: string
+          youtube_url: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          id?: string
+          user_id: string
+          youtube_url: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          id?: string
+          user_id?: string
+          youtube_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devotional_songs_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       families: {
         Row: {
           access_code: string

@@ -25,9 +25,15 @@ interface Blessing {
   liked_by_me: boolean;
 }
 
+interface SharedSong {
+  id: string;
+  youtube_url: string;
+  created_at: string;
+  display_name: string;
+}
+
 async function fetchBlessingsData(familyId: string, userId: string) {
-  // Parallelize all three queries
-  const [blessingsRes, membersRes] = await Promise.all([
+  const [blessingsRes, membersRes, songsRes] = await Promise.all([
     supabase
       .from('blessings')
       .select('id, content, created_at, user_id, tagged_member_id')
@@ -38,28 +44,35 @@ async function fetchBlessingsData(familyId: string, userId: string) {
       .from('family_members')
       .select('id, user_id, display_name')
       .eq('family_id', familyId),
+    supabase
+      .from('devotional_songs')
+      .select('id, youtube_url, created_at, user_id')
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: false })
+      .limit(20),
   ]);
 
   const blessings = blessingsRes.data || [];
   const members = membersRes.data || [];
-
-  if (blessings.length === 0) return { blessings: [] as Blessing[], members };
-
-  const blessingIds = blessings.map(b => b.id);
-  const { data: likes } = await supabase
-    .from('blessing_likes')
-    .select('blessing_id, user_id')
-    .in('blessing_id', blessingIds);
+  const songs = songsRes.data || [];
 
   const nameByUserId = new Map(members.map(m => [m.user_id, m.display_name]));
   const nameByMemberId = new Map(members.map(m => [m.id, m.display_name]));
 
-  const likeCounts = new Map<string, number>();
-  const myLikes = new Set<string>();
-  likes?.forEach(l => {
-    likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
-    if (l.user_id === userId) myLikes.add(l.blessing_id);
-  });
+  let likeCounts = new Map<string, number>();
+  let myLikes = new Set<string>();
+
+  if (blessings.length > 0) {
+    const blessingIds = blessings.map(b => b.id);
+    const { data: likes } = await supabase
+      .from('blessing_likes')
+      .select('blessing_id, user_id')
+      .in('blessing_id', blessingIds);
+    likes?.forEach(l => {
+      likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
+      if (l.user_id === userId) myLikes.add(l.blessing_id);
+    });
+  }
 
   return {
     blessings: blessings.map(b => ({
@@ -70,6 +83,10 @@ async function fetchBlessingsData(familyId: string, userId: string) {
       liked_by_me: myLikes.has(b.id),
     })) as Blessing[],
     members,
+    songs: songs.map(s => ({
+      ...s,
+      display_name: nameByUserId.get(s.user_id) || 'Someone',
+    })) as SharedSong[],
   };
 }
 
@@ -79,7 +96,8 @@ export default function WisdomZone() {
   const queryClient = useQueryClient();
   const [blessing, setBlessing] = useState('');
   const [sending, setSending] = useState(false);
-  const [videoUrl, setVideoUrl] = useState('');
+  const [songUrl, setSongUrl] = useState('');
+  const [sendingSong, setSendingSong] = useState(false);
 
   // Tagging
   const [taggedMember, setTaggedMember] = useState<FamilyMemberOption | null>(null);
@@ -95,6 +113,7 @@ export default function WisdomZone() {
 
   const blessings = data?.blessings ?? [];
   const members = data?.members ?? [];
+  const songs = data?.songs ?? [];
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['wisdom-blessings', family?.id, user?.id] });
 
@@ -147,7 +166,21 @@ export default function WisdomZone() {
     return match?.[1] || null;
   };
 
-  const ytId = getYouTubeId(videoUrl);
+  const sendSong = async () => {
+    const ytId = getYouTubeId(songUrl);
+    if (!ytId || !user || !family) return;
+    setSendingSong(true);
+    const { error } = await supabase.from('devotional_songs').insert({
+      user_id: user.id,
+      family_id: family.id,
+      youtube_url: songUrl.trim(),
+    });
+    if (error) { toast.error('Failed to share song'); setSendingSong(false); return; }
+    toast.success('Song shared 🎵');
+    setSongUrl('');
+    setSendingSong(false);
+    invalidate();
+  };
 
   const timeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
@@ -309,30 +342,47 @@ export default function WisdomZone() {
           )}
         </div>
 
-        {/* Devotional Video */}
+        {/* Devotional Songs */}
         <div className="space-y-2">
           <h2 className="font-display font-semibold text-sm text-wisdom-accent uppercase tracking-wide">
             Devotional Songs
           </h2>
-          <input
-            type="url"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="Paste YouTube link..."
-            className="w-full p-2.5 rounded-xl bg-popover border border-wisdom/60 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-wisdom-accent/30"
-          />
-          {ytId && (
-            <div className="rounded-xl overflow-hidden border border-wisdom/50 shadow-sm">
-              <iframe
-                src={`https://www.youtube.com/embed/${ytId}`}
-                className="w-full aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
-                allowFullScreen
-                title="Devotional Video"
-                loading="lazy"
-              />
-            </div>
-          )}
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={songUrl}
+              onChange={(e) => setSongUrl(e.target.value)}
+              placeholder="Paste YouTube link..."
+              className="flex-1 p-2.5 rounded-xl bg-popover border border-wisdom/60 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-wisdom-accent/30"
+            />
+            <button
+              onClick={sendSong}
+              disabled={!getYouTubeId(songUrl) || sendingSong}
+              className="px-4 py-2.5 bg-wisdom-accent text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center gap-2 disabled:opacity-40 transition-opacity"
+            >
+              <Send size={14} /> {sendingSong ? '...' : 'Share'}
+            </button>
+          </div>
+          {songs.map(s => {
+            const id = getYouTubeId(s.youtube_url);
+            if (!id) return null;
+            return (
+              <div key={s.id} className="rounded-xl overflow-hidden border border-wisdom/50 shadow-sm bg-popover">
+                <div className="px-3 py-2 flex justify-between items-center">
+                  <span className="font-display font-semibold text-sm text-wisdom-accent">Shared by {s.display_name}</span>
+                  <span className="text-xs text-muted-foreground font-body">{timeAgo(s.created_at)}</span>
+                </div>
+                <iframe
+                  src={`https://www.youtube.com/embed/${id}`}
+                  className="w-full aspect-video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  allowFullScreen
+                  title="Devotional Video"
+                  loading="lazy"
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </motion.div>
