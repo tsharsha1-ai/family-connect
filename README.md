@@ -1,73 +1,142 @@
-# Welcome to your Lovable project
+# 🏠 Family Adda
 
-## Project info
+**Your family's private digital veranda** — a warm, Indian-family-centric app where every member has their own corner, yet everyone stays connected under one roof.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## 🪷 Concept
 
-There are several ways of editing your application.
+"Adda" (আড্ডা) means a relaxed gathering spot for conversation. **Family Adda** reimagines this for the digital age — a single private space where grandparents share blessings, kids play games, siblings track cricket predictions, and everyone votes on weekend plans.
 
-**Use Lovable**
+Each family gets a **private space** protected by a 6-digit access code. Members choose a **persona** (Chhotu 🪁, Bhaiya 🏏, Didi 🌸, Dada/Dadi 🪷) that personalises their experience across four themed zones.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## ✨ Features
 
-**Use your preferred IDE**
+### 🔐 Gatekeeper (Onboarding)
+- **Create a Family** — name your family, get a shareable 6-digit code
+- **Join with Code** — enter a family code to join an existing household
+- **Persona Selection** — pick your role: Kid, Man, Woman, or Elder
+- **Email/Password Auth** — secure sign-up and login
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🏡 Home Hub
+- Central dashboard showing family activity at a glance
+- Quick navigation to all zones
+- Family name and member overview
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 📰 Family Feed
+- Shared activity stream for the whole family
+- See what everyone's been up to across all zones
 
-Follow these steps:
+### 📅 Family Calendar
+- Track **birthdays**, **anniversaries**, and **travel** plans
+- Shared calendar visible to all family members
+- Event reminders via push notifications
+
+### 🗳️ Family Polls
+- Create polls with custom options and expiry times
+- Real-time voting — see results as they come in
+- Pin important polls to the top
+
+### 🏏 Arena Zone (Bhaiya's Corner)
+- **IPL Match Predictions** — predict match winners before games start
+- **Leaderboard** — family-wide prediction rankings with points
+- Admin tools to manage matches and declare winners
+
+### 🌸 Style Zone (Didi's Corner)
+- **Style Circle** — share outfit photos with the family
+- **Likes & Comments** — react to each other's posts
+- Image upload with captions
+
+### 🪷 Wisdom Well (Dada/Dadi's Corner)
+- **Blessings Board** — elders share blessings, tag family members, and receive ❤️ likes
+- **Devotional Songs** — share YouTube bhajan/kirtan links with the family; each song shows the sender's name and when it was shared
+
+### 🪁 Kids Zone (Chhotu's Corner)
+- **Whack-a-Mole** — fun mini-game with family leaderboard
+- High scores tracked per family
+
+### ⚙️ Settings
+- View family access code (for inviting members)
+- Manage push notification preferences
+- Sign out
+
+### 🔔 Push Notifications
+- PWA-ready with service worker support
+- Notifications for new family activity and upcoming events
+- Per-user notification preferences
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, TypeScript, Vite |
+| **Styling** | Tailwind CSS, shadcn/ui |
+| **Animations** | Framer Motion |
+| **Data Fetching** | TanStack React Query |
+| **Routing** | React Router v6 (lazy-loaded zones) |
+| **Backend** | Lovable Cloud (Supabase) |
+| **Auth** | Email/password with Row-Level Security |
+| **PWA** | Service worker, web push notifications |
+
+---
+
+## 🏗️ Architecture
+
+```
+src/
+├── components/       # Shared UI (AppHeader, BottomNav, PollCard, etc.)
+├── contexts/         # AuthContext — manages user, family, memberships
+├── pages/
+│   ├── Gatekeeper    # Onboarding wizard
+│   ├── HomeHub       # Dashboard
+│   ├── FamilyFeed    # Activity stream
+│   ├── FamilyCalendar# Events
+│   ├── SettingsPage  # Preferences
+│   └── zones/
+│       ├── ArenaZone   # Cricket predictions
+│       ├── StyleZone   # Photo sharing
+│       ├── WisdomZone  # Blessings & devotional songs
+│       └── KidsZone    # Mini-games
+├── types/            # TypeScript interfaces (Family, Profile, etc.)
+└── hooks/            # Custom hooks (push notifications, mobile detection)
+```
+
+### Multi-Family Support
+A user can belong to **multiple families** (e.g., in-laws and parents). The `FamilyPicker` lets them switch context, and all data is scoped to the active family via RLS policies using `user_is_family_member(family_id)`.
+
+### Security
+- Every table uses **Row-Level Security** — users can only access data for families they belong to
+- Family creation is open, but all content operations require authentication
+- Admin actions (match management, poll pinning) are restricted to family admins
+
+---
+
+## 🚀 Getting Started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repo
 git clone <YOUR_GIT_URL>
+cd family-adda
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Or simply open the project in [Lovable](https://lovable.dev) and start prompting!
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## 📱 PWA Install
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Family Adda is a Progressive Web App. On mobile browsers, tap **"Add to Home Screen"** for a native app-like experience with push notifications.
 
-## What technologies are used for this project?
+---
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*Built with ❤️ for Indian families, by Family Adda.*
