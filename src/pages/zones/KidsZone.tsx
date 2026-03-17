@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,50 +21,47 @@ interface LeaderboardEntry {
   score: number;
 }
 
+async function fetchLeaderboardData(familyId: string): Promise<LeaderboardEntry[]> {
+  const { data } = await supabase
+    .from('game_scores')
+    .select('score, user_id')
+    .eq('family_id', familyId)
+    .eq('game', 'whack-a-mole')
+    .order('score', { ascending: false })
+    .limit(5);
+
+  if (!data || data.length === 0) return [];
+
+  const userIds = [...new Set(data.map(d => d.user_id))];
+  const { data: members } = await supabase
+    .from('family_members')
+    .select('user_id, display_name')
+    .eq('family_id', familyId)
+    .in('user_id', userIds);
+
+  const nameMap = new Map(members?.map(m => [m.user_id, m.display_name]) ?? []);
+  return data.map(d => ({
+    display_name: nameMap.get(d.user_id) || 'Unknown',
+    score: d.score,
+  }));
+}
+
 export default function KidsZone() {
   const navigate = useNavigate();
   const { user, profile, family } = useAuth();
+  const queryClient = useQueryClient();
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'done'>('idle');
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [moles, setMoles] = useState<Mole[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const moleIdRef = useRef(0);
   const scoreSavedRef = useRef(false);
 
-  const fetchLeaderboard = useCallback(async () => {
-    if (!family?.id) return;
-    const { data } = await supabase
-      .from('game_scores')
-      .select('score, user_id')
-      .eq('family_id', family.id)
-      .eq('game', 'whack-a-mole')
-      .order('score', { ascending: false })
-      .limit(5);
-
-    if (!data || data.length === 0) {
-      setLeaderboard([]);
-      return;
-    }
-
-    // Fetch display names from family_members
-    const userIds = [...new Set(data.map(d => d.user_id))];
-    const { data: members } = await supabase
-      .from('family_members')
-      .select('user_id, display_name')
-      .eq('family_id', family.id)
-      .in('user_id', userIds);
-
-    const nameMap = new Map(members?.map(m => [m.user_id, m.display_name]) ?? []);
-    setLeaderboard(data.map(d => ({
-      display_name: nameMap.get(d.user_id) || 'Unknown',
-      score: d.score,
-    })));
-  }, [family?.id]);
-
-  useEffect(() => {
-    fetchLeaderboard();
-  }, [fetchLeaderboard]);
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: ['kids-leaderboard', family?.id],
+    queryFn: () => fetchLeaderboardData(family!.id),
+    enabled: !!family?.id,
+  });
 
   const saveScore = useCallback(async (finalScore: number) => {
     if (!user?.id || !family?.id || scoreSavedRef.current) return;
@@ -74,8 +72,8 @@ export default function KidsZone() {
       score: finalScore,
       game: 'whack-a-mole',
     });
-    fetchLeaderboard();
-  }, [user?.id, family?.id, fetchLeaderboard]);
+    queryClient.invalidateQueries({ queryKey: ['kids-leaderboard', family.id] });
+  }, [user?.id, family?.id, queryClient]);
 
   const spawnMole = useCallback(() => {
     const index = Math.floor(Math.random() * GRID_SIZE);
@@ -103,7 +101,6 @@ export default function KidsZone() {
     return () => clearTimeout(timer);
   }, [gameState, timeLeft]);
 
-  // Save score when game ends
   useEffect(() => {
     if (gameState === 'done') {
       saveScore(score);
@@ -124,11 +121,7 @@ export default function KidsZone() {
   };
 
   return (
-    <motion.div
-      layoutId="zone-kids"
-      className="min-h-screen bg-kids-bg"
-    >
-      {/* Header */}
+    <motion.div layoutId="zone-kids" className="min-h-screen bg-kids-bg">
       <div className="flex items-center gap-3 px-4 py-3 bg-kids/30">
         <button onClick={() => navigate('/')} className="p-1">
           <ArrowLeft size={22} className="text-foreground" />
@@ -137,7 +130,6 @@ export default function KidsZone() {
       </div>
 
       <div className="p-4 flex flex-col items-center gap-4">
-        {/* Score & Timer */}
         {gameState === 'playing' && (
           <div className="flex justify-between w-full max-w-xs">
             <div className="font-display font-bold text-kids-accent text-lg">Score: {score}</div>
@@ -145,7 +137,6 @@ export default function KidsZone() {
           </div>
         )}
 
-        {/* Game Grid */}
         {gameState === 'idle' && (
           <div className="text-center space-y-4 py-8">
             <div className="text-6xl animate-pop-up">🐹</div>
@@ -205,7 +196,6 @@ export default function KidsZone() {
           </div>
         )}
 
-        {/* Leaderboard */}
         <div className="w-full max-w-xs mt-4">
           <h3 className="font-display font-bold text-foreground flex items-center gap-2 mb-2">
             <Trophy size={16} className="text-kids-accent" /> Junior Top 5
