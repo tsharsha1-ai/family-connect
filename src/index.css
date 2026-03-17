@@ -38,24 +38,24 @@
     --radius: 1rem;
 
     /* Zone: Kids */
-    --kids-primary: 44 100% 70%; /* #FFD166 Marigold */
-    --kids-accent: 348 84% 61%; /* #EF476F Watermelon */
-    --kids-bg: 44 100% 95%;
+    --kids-primary: 44 100% 62%;
+    --kids-accent: 348 90% 55%;
+    --kids-bg: 44 100% 92%;
 
     /* Zone: IPL Arena */
-    --arena-primary: 216 38% 17%; /* #1B263B Midnight */
-    --arena-accent: 45 100% 50%; /* #FFC300 Gold */
-    --arena-bg: 216 38% 12%;
+    --arena-primary: 220 60% 22%;
+    --arena-accent: 42 100% 55%;
+    --arena-bg: 220 50% 16%;
 
     /* Zone: Style Circle */
-    --style-primary: 349 30% 85%; /* #EAD2D5 Dusty Rose */
-    --style-accent: 10 22% 44%; /* #8C5E58 Terracotta */
-    --style-bg: 349 30% 92%;
+    --style-primary: 330 55% 65%;
+    --style-accent: 330 60% 42%;
+    --style-bg: 330 40% 92%;
 
     /* Zone: Wisdom Well */
-    --wisdom-primary: 36 60% 88%; /* Warm golden cream */
-    --wisdom-accent: 25 70% 38%; /* Rich amber brown */
-    --wisdom-bg: 40 50% 96%;
+    --wisdom-primary: 32 80% 55%;
+    --wisdom-accent: 24 75% 35%;
+    --wisdom-bg: 38 60% 93%;
 
     /* Bottom nav */
     --nav-bg: 0 0% 100%;
