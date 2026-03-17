@@ -7,6 +7,7 @@ import { useLocation } from 'react-router-dom';
 
 // Lazy-load heavy zone pages — only downloaded when visited
 const FamilyCalendar = lazy(() => import('@/pages/FamilyCalendar'));
+const FamilyFeed = lazy(() => import('@/pages/FamilyFeed'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const KidsZone = lazy(() => import('@/pages/zones/KidsZone'));
 const ArenaZone = lazy(() => import('@/pages/zones/ArenaZone'));
