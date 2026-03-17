@@ -1,11 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, Settings } from 'lucide-react';
+import { Home, Calendar, Newspaper, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PERSONA_CONFIG } from '@/types/family';
 
 const NAV_ITEMS = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/calendar', icon: Calendar, label: 'Calendar' },
+  { path: '/feed', icon: Newspaper, label: 'Feed' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -15,7 +16,7 @@ export default function BottomNav() {
   const { profile } = useAuth();
 
   // Check if we're in a zone (not home, calendar, or settings)
-  const isInZone = !['/', '/calendar', '/settings'].includes(location.pathname);
+  const isInZone = !['/', '/calendar', '/feed', '/settings'].includes(location.pathname);
   if (isInZone) return null;
 
   const personaAccent = profile?.role
