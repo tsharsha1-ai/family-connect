@@ -14,12 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      blessing_likes: {
+        Row: {
+          blessing_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          blessing_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          blessing_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blessing_likes_blessing_id_fkey"
+            columns: ["blessing_id"]
+            isOneToOne: false
+            referencedRelation: "blessings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blessings: {
         Row: {
           content: string
           created_at: string
           family_id: string
           id: string
+          tagged_member_id: string | null
           user_id: string
         }
         Insert: {
@@ -27,6 +57,7 @@ export type Database = {
           created_at?: string
           family_id: string
           id?: string
+          tagged_member_id?: string | null
           user_id: string
         }
         Update: {
@@ -34,6 +65,7 @@ export type Database = {
           created_at?: string
           family_id?: string
           id?: string
+          tagged_member_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -42,6 +74,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blessings_tagged_member_id_fkey"
+            columns: ["tagged_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
             referencedColumns: ["id"]
           },
         ]
