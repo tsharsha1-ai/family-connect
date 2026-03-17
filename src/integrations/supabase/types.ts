@@ -185,6 +185,53 @@ export type Database = {
           },
         ]
       }
+      family_polls: {
+        Row: {
+          created_at: string
+          created_by: string
+          duration_hours: number
+          expires_at: string
+          family_id: string
+          id: string
+          is_active: boolean
+          is_pinned: boolean
+          options: Json
+          question: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          duration_hours: number
+          expires_at: string
+          family_id: string
+          id?: string
+          is_active?: boolean
+          is_pinned?: boolean
+          options: Json
+          question: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          duration_hours?: number
+          expires_at?: string
+          family_id?: string
+          id?: string
+          is_active?: boolean
+          is_pinned?: boolean
+          options?: Json
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_polls_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_scores: {
         Row: {
           created_at: string
@@ -255,6 +302,38 @@ export type Database = {
           winner?: string | null
         }
         Relationships: []
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          poll_id: string
+          selected_option: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          poll_id: string
+          selected_option: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          poll_id?: string
+          selected_option?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "family_polls"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       predictions: {
         Row: {
