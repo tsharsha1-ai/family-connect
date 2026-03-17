@@ -46,14 +46,15 @@ export default function KidsZone() {
       return;
     }
 
-    // Fetch display names for the user_ids
+    // Fetch display names from family_members
     const userIds = [...new Set(data.map(d => d.user_id))];
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, display_name')
-      .in('id', userIds);
+    const { data: members } = await supabase
+      .from('family_members')
+      .select('user_id, display_name')
+      .eq('family_id', family.id)
+      .in('user_id', userIds);
 
-    const nameMap = new Map(profiles?.map(p => [p.id, p.display_name]) ?? []);
+    const nameMap = new Map(members?.map(m => [m.user_id, m.display_name]) ?? []);
     setLeaderboard(data.map(d => ({
       display_name: nameMap.get(d.user_id) || 'Unknown',
       score: d.score,
@@ -166,7 +167,8 @@ export default function KidsZone() {
               return (
                 <div
                   key={i}
-                  className="bg-kids/40 rounded-xl flex items-center justify-center aspect-square border-2 border-kids"
+                  className="rounded-xl flex items-center justify-center aspect-square border-2 border-primary-foreground/30 shadow-md"
+                  style={{ background: 'hsla(280, 70%, 50%, 0.5)', boxShadow: '0 2px 12px hsla(280, 70%, 40%, 0.3)' }}
                 >
                   <AnimatePresence>
                     {mole && (
