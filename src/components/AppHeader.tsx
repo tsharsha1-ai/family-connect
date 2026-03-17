@@ -77,7 +77,7 @@ export default function AppHeader({ isHome = false }: { isHome?: boolean }) {
         </AnimatePresence>
       </div>
       {profile && (
-        <span className="text-sm text-muted-foreground font-body">
+        <span className={`text-sm font-body ${isHome ? 'text-white/90' : 'text-muted-foreground'}`}>
           {profile.display_name}
         </span>
       )}
