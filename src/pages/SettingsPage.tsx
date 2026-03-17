@@ -191,3 +191,16 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* Sign Out */}
+        <button
+          onClick={signOut}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-destructive text-destructive font-display font-semibold"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
