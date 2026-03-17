@@ -60,17 +60,16 @@ export default function StyleZone() {
     }
 
     // Fetch profiles, likes, comments counts
-    const userIds = [...new Set(postsData.map(p => p.user_id))];
     const postIds = postsData.map(p => p.id);
 
-    const [profilesRes, likesRes, myLikesRes, commentsRes] = await Promise.all([
-      supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds),
+    const [membersRes, likesRes, myLikesRes, commentsRes] = await Promise.all([
+      supabase.from('family_members').select('user_id, display_name, avatar_url').eq('family_id', family.id),
       supabase.from('style_likes').select('post_id').in('post_id', postIds),
       supabase.from('style_likes').select('post_id').in('post_id', postIds).eq('user_id', user.id),
       supabase.from('style_comments').select('post_id').in('post_id', postIds),
     ]);
 
-    const profileMap = new Map(profilesRes.data?.map(p => [p.id, p]) ?? []);
+    const memberMap = new Map(membersRes.data?.map((m: any) => [m.user_id, m]) ?? []);
     const likeCounts = new Map<string, number>();
     likesRes.data?.forEach(l => likeCounts.set(l.post_id, (likeCounts.get(l.post_id) || 0) + 1));
     const myLikes = new Set(myLikesRes.data?.map(l => l.post_id) ?? []);
@@ -78,15 +77,15 @@ export default function StyleZone() {
     commentsRes.data?.forEach(c => commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1));
 
     setPosts(postsData.map(p => {
-      const prof = profileMap.get(p.user_id);
+      const member = memberMap.get(p.user_id);
       return {
         id: p.id,
         user_id: p.user_id,
         image_url: p.image_url,
         caption: p.caption,
         created_at: p.created_at,
-        display_name: prof?.display_name || 'Unknown',
-        avatar_url: (prof as any)?.avatar_url || null,
+        display_name: member?.display_name || 'Unknown',
+        avatar_url: member?.avatar_url || null,
         like_count: likeCounts.get(p.id) || 0,
         comment_count: commentCounts.get(p.id) || 0,
         liked_by_me: myLikes.has(p.id),
@@ -215,8 +214,8 @@ export default function StyleZone() {
 
     if (data && data.length > 0) {
       const userIds = [...new Set(data.map(c => c.user_id))];
-      const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', userIds);
-      const nameMap = new Map(profiles?.map(p => [p.id, p.display_name]) ?? []);
+      const { data: members } = await supabase.from('family_members').select('user_id, display_name').eq('family_id', family!.id);
+      const nameMap = new Map(members?.map((m: any) => [m.user_id, m.display_name]) ?? []);
       setComments(data.map(c => ({ ...c, display_name: nameMap.get(c.user_id) || 'Unknown' })));
     } else {
       setComments([]);
