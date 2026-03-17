@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, Settings } from 'lucide-react';
+import { Home, Calendar, Newspaper, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PERSONA_CONFIG } from '@/types/family';
 
