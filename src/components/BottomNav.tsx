@@ -6,6 +6,7 @@ import { PERSONA_CONFIG } from '@/types/family';
 const NAV_ITEMS = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/calendar', icon: Calendar, label: 'Calendar' },
+  { path: '/feed', icon: Newspaper, label: 'Feed' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
 
