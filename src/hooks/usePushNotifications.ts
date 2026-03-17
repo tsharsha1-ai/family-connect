@@ -19,11 +19,11 @@ export function usePushNotifications() {
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [activityEnabled, setActivityEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [vapidKey, setVapidKey] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch VAPID public key from edge function
     supabase.functions.invoke('get-vapid-key').then(({ data }) => {
       if (data?.vapidPublicKey) setVapidKey(data.vapidPublicKey);
     });
@@ -31,11 +31,21 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!user || !('serviceWorker' in navigator)) return;
-    
+
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();
       setIsSubscribed(!!sub);
     });
+
+    // Fetch activity preference
+    supabase
+      .from('push_subscriptions')
+      .select('notify_on_activity')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setActivityEnabled(data.notify_on_activity);
+      });
   }, [user]);
 
   const subscribe = useCallback(async () => {
@@ -52,7 +62,7 @@ export function usePushNotifications() {
 
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
-      
+
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -61,7 +71,7 @@ export function usePushNotifications() {
       }
 
       const subJson = sub.toJSON();
-      
+
       const { error } = await supabase.functions.invoke('save-push-subscription', {
         body: {
           endpoint: subJson.endpoint,
@@ -99,7 +109,25 @@ export function usePushNotifications() {
     }
   }, [user]);
 
+  const toggleActivityNotifications = useCallback(async (enabled: boolean) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .update({ notify_on_activity: enabled } as any)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setActivityEnabled(enabled);
+    } catch (err) {
+      console.error('Toggle activity notifications failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   const isSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
-  return { permission, isSubscribed, isSupported, loading, subscribe, unsubscribe };
+  return { permission, isSubscribed, isSupported, loading, subscribe, unsubscribe, activityEnabled, toggleActivityNotifications };
 }

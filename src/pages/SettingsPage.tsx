@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { user, family, profile, memberships, signOut, refreshProfile, setActiveFamily } = useAuth();
-  const { isSupported, isSubscribed, loading, subscribe, unsubscribe, permission } = usePushNotifications();
+  const { isSupported, isSubscribed, loading, subscribe, unsubscribe, permission, activityEnabled, toggleActivityNotifications } = usePushNotifications();
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
