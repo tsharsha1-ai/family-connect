@@ -58,11 +58,11 @@ export default function HomeHub() {
           transition={{ delay: i * 0.1, type: 'spring', stiffness: 300, damping: 25 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => navigate(zone.path)}
-          className={`${zone.bgClass} rounded-2xl border-2 ${zone.borderClass} flex flex-col items-center justify-center gap-1.5 shadow-md hover:shadow-lg active:shadow-none transition-all`}
+          className={`${zone.gradient} rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-lg hover:shadow-xl active:shadow-none transition-all`}
         >
           <span className="text-3xl">{zone.emoji}</span>
           <span className={`font-display font-bold text-sm ${zone.textClass}`}>{zone.title}</span>
-          <span className="text-[11px] text-muted-foreground font-body">{zone.subtitle}</span>
+          <span className={`text-[11px] font-body ${zone.subtitleClass}`}>{zone.subtitle}</span>
         </motion.button>
       ))}
     </div>
