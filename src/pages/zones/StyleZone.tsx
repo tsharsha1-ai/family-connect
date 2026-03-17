@@ -69,7 +69,7 @@ export default function StyleZone() {
       supabase.from('style_comments').select('post_id').in('post_id', postIds),
     ]);
 
-    const profileMap = new Map(profilesRes.data?.map(p => [p.id, p]) ?? []);
+    const memberMap = new Map(membersRes.data?.map((m: any) => [m.user_id, m]) ?? []);
     const likeCounts = new Map<string, number>();
     likesRes.data?.forEach(l => likeCounts.set(l.post_id, (likeCounts.get(l.post_id) || 0) + 1));
     const myLikes = new Set(myLikesRes.data?.map(l => l.post_id) ?? []);
