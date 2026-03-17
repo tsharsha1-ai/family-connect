@@ -48,7 +48,7 @@ export default function HomeHub() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3 min-h-[calc(100vh-7.5rem)]">
+    <div className="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3 h-[calc(100dvh-7.5rem)]">
       {ZONES.map((zone, i) => (
         <motion.button
           key={zone.id}
@@ -58,11 +58,11 @@ export default function HomeHub() {
           transition={{ delay: i * 0.1, type: 'spring', stiffness: 300, damping: 25 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => navigate(zone.path)}
-          className={`${zone.bgClass} rounded-2xl border-2 ${zone.borderClass} flex flex-col items-center justify-center gap-2 shadow-sm active:shadow-none transition-shadow`}
+          className={`${zone.bgClass} rounded-2xl border-2 ${zone.borderClass} flex flex-col items-center justify-center gap-1.5 shadow-md hover:shadow-lg active:shadow-none transition-all`}
         >
-          <span className="text-4xl">{zone.emoji}</span>
-          <span className={`font-display font-bold text-base ${zone.textClass}`}>{zone.title}</span>
-          <span className="text-xs text-muted-foreground font-body">{zone.subtitle}</span>
+          <span className="text-3xl">{zone.emoji}</span>
+          <span className={`font-display font-bold text-sm ${zone.textClass}`}>{zone.title}</span>
+          <span className="text-[11px] text-muted-foreground font-body">{zone.subtitle}</span>
         </motion.button>
       ))}
     </div>
