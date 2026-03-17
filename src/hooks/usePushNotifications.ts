@@ -20,6 +20,7 @@ export function usePushNotifications() {
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [activityEnabled, setActivityEnabled] = useState(true);
+  const [eventsEnabled, setEventsEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [vapidKey, setVapidKey] = useState<string | null>(null);
 
@@ -37,82 +38,100 @@ export function usePushNotifications() {
       setIsSubscribed(!!sub);
     });
 
-    // Fetch activity preference
+    // Fetch preferences
     supabase
       .from('push_subscriptions')
-      .select('notify_on_activity')
+      .select('notify_on_activity, notify_on_events')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setActivityEnabled(data.notify_on_activity);
+        if (data) {
+          setActivityEnabled(data.notify_on_activity);
+          setEventsEnabled((data as any).notify_on_events ?? true);
+        }
       });
   }, [user]);
 
-  const subscribe = useCallback(async () => {
-    if (!user || !family || !vapidKey) return;
-    setLoading(true);
+  const ensurePushSubscription = useCallback(async (): Promise<boolean> => {
+    if (!user || !family || !vapidKey) return false;
 
-    try {
-      const perm = await Notification.requestPermission();
-      setPermission(perm);
-      if (perm !== 'granted') {
-        setLoading(false);
-        return;
-      }
+    const perm = await Notification.requestPermission();
+    setPermission(perm);
+    if (perm !== 'granted') return false;
 
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
 
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
-        });
-      }
-
-      const subJson = sub.toJSON();
-
-      const { error } = await supabase.functions.invoke('save-push-subscription', {
-        body: {
-          endpoint: subJson.endpoint,
-          p256dh: subJson.keys?.p256dh,
-          auth: subJson.keys?.auth,
-        },
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
       });
-
-      if (error) throw error;
-      setIsSubscribed(true);
-    } catch (err) {
-      console.error('Push subscription failed:', err);
-    } finally {
-      setLoading(false);
     }
+
+    const subJson = sub.toJSON();
+    const { error } = await supabase.functions.invoke('save-push-subscription', {
+      body: {
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys?.p256dh,
+        auth: subJson.keys?.auth,
+      },
+    });
+
+    if (error) throw error;
+    setIsSubscribed(true);
+    return true;
   }, [user, family, vapidKey]);
 
-  const unsubscribe = useCallback(async () => {
+  const removePushSubscription = useCallback(async () => {
+    if (!user) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+
+    await supabase.functions.invoke('save-push-subscription', {
+      body: { action: 'unsubscribe' },
+    });
+    setIsSubscribed(false);
+  }, [user]);
+
+  const toggleEventNotifications = useCallback(async (enabled: boolean) => {
     if (!user) return;
     setLoading(true);
-
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) await sub.unsubscribe();
+      if (enabled && !isSubscribed) {
+        const ok = await ensurePushSubscription();
+        if (!ok) { setLoading(false); return; }
+      }
 
-      await supabase.functions.invoke('save-push-subscription', {
-        body: { action: 'unsubscribe' },
-      });
-      setIsSubscribed(false);
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .update({ notify_on_events: enabled } as any)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setEventsEnabled(enabled);
+
+      // If both off, unsubscribe from push entirely
+      if (!enabled && !activityEnabled) {
+        await removePushSubscription();
+      }
     } catch (err) {
-      console.error('Push unsubscribe failed:', err);
+      console.error('Toggle event notifications failed:', err);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, isSubscribed, activityEnabled, ensurePushSubscription, removePushSubscription]);
 
   const toggleActivityNotifications = useCallback(async (enabled: boolean) => {
     if (!user) return;
     setLoading(true);
     try {
+      if (enabled && !isSubscribed) {
+        const ok = await ensurePushSubscription();
+        if (!ok) { setLoading(false); return; }
+      }
+
       const { error } = await supabase
         .from('push_subscriptions')
         .update({ notify_on_activity: enabled } as any)
@@ -120,14 +139,23 @@ export function usePushNotifications() {
 
       if (error) throw error;
       setActivityEnabled(enabled);
+
+      // If both off, unsubscribe from push entirely
+      if (!enabled && !eventsEnabled) {
+        await removePushSubscription();
+      }
     } catch (err) {
       console.error('Toggle activity notifications failed:', err);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, isSubscribed, eventsEnabled, ensurePushSubscription, removePushSubscription]);
 
   const isSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
-  return { permission, isSubscribed, isSupported, loading, subscribe, unsubscribe, activityEnabled, toggleActivityNotifications };
+  return {
+    permission, isSubscribed, isSupported, loading,
+    activityEnabled, toggleActivityNotifications,
+    eventsEnabled, toggleEventNotifications,
+  };
 }
