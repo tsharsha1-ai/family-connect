@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, LogOut, Bell, BellOff, Camera, Users } from 'lucide-react';
+import { Copy, Check, LogOut, Bell, BellOff, Camera, Users, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
