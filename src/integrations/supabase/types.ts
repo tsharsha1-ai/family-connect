@@ -220,9 +220,46 @@ export type Database = {
           },
         ]
       }
+      ipl_matches: {
+        Row: {
+          created_at: string
+          id: string
+          match_date: string
+          match_time: string
+          status: string
+          team_a: string
+          team_b: string
+          venue: string
+          winner: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_date: string
+          match_time?: string
+          status?: string
+          team_a: string
+          team_b: string
+          venue?: string
+          winner?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_date?: string
+          match_time?: string
+          status?: string
+          team_a?: string
+          team_b?: string
+          venue?: string
+          winner?: string | null
+        }
+        Relationships: []
+      }
       predictions: {
         Row: {
           created_at: string
+          family_id: string | null
           id: string
           match_id: string
           points_earned: number
@@ -231,6 +268,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          family_id?: string | null
           id?: string
           match_id: string
           points_earned?: number
@@ -239,13 +277,22 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          family_id?: string | null
           id?: string
           match_id?: string
           points_earned?: number
           predicted_winner?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "predictions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
