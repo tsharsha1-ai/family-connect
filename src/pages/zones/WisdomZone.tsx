@@ -1,10 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Send } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Send, Heart, AtSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+
+interface FamilyMemberOption {
+  id: string;       // family_members.id
+  user_id: string;
+  display_name: string;
+}
 
 interface Blessing {
   id: string;
@@ -12,6 +18,10 @@ interface Blessing {
   created_at: string;
   user_id: string;
   display_name: string;
+  tagged_member_id: string | null;
+  tagged_name: string | null;
+  like_count: number;
+  liked_by_me: boolean;
 }
 
 export default function WisdomZone() {
@@ -23,25 +33,72 @@ export default function WisdomZone() {
   const [sending, setSending] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
 
-  const fetchBlessings = useCallback(async () => {
+  // Tagging
+  const [members, setMembers] = useState<FamilyMemberOption[]>([]);
+  const [taggedMember, setTaggedMember] = useState<FamilyMemberOption | null>(null);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch family members for tagging
+  useEffect(() => {
     if (!family?.id) return;
+    supabase
+      .from('family_members')
+      .select('id, user_id, display_name')
+      .eq('family_id', family.id)
+      .then(({ data }) => {
+        if (data) setMembers(data);
+      });
+  }, [family?.id]);
+
+  const fetchBlessings = useCallback(async () => {
+    if (!family?.id || !user) return;
     const { data } = await supabase
       .from('blessings')
-      .select('id, content, created_at, user_id')
+      .select('id, content, created_at, user_id, tagged_member_id')
       .eq('family_id', family.id)
       .order('created_at', { ascending: false })
       .limit(20);
 
-    if (data && data.length > 0) {
-      const userIds = [...new Set(data.map(b => b.user_id))];
-      const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', userIds);
-      const nameMap = new Map(profiles?.map(p => [p.id, p.display_name]) ?? []);
-      setBlessings(data.map(b => ({ ...b, display_name: nameMap.get(b.user_id) || 'Someone' })));
-    } else {
+    if (!data || data.length === 0) {
       setBlessings([]);
+      setLoading(false);
+      return;
     }
+
+    // Get display names from family_members
+    const { data: fmData } = await supabase
+      .from('family_members')
+      .select('id, user_id, display_name')
+      .eq('family_id', family.id);
+
+    const nameByUserId = new Map(fmData?.map(m => [m.user_id, m.display_name]) ?? []);
+    const nameByMemberId = new Map(fmData?.map(m => [m.id, m.display_name]) ?? []);
+
+    // Get like counts
+    const blessingIds = data.map(b => b.id);
+    const { data: likes } = await supabase
+      .from('blessing_likes')
+      .select('blessing_id, user_id')
+      .in('blessing_id', blessingIds);
+
+    const likeCounts = new Map<string, number>();
+    const myLikes = new Set<string>();
+    likes?.forEach(l => {
+      likeCounts.set(l.blessing_id, (likeCounts.get(l.blessing_id) || 0) + 1);
+      if (l.user_id === user.id) myLikes.add(l.blessing_id);
+    });
+
+    setBlessings(data.map(b => ({
+      ...b,
+      display_name: nameByUserId.get(b.user_id) || 'Someone',
+      tagged_name: b.tagged_member_id ? nameByMemberId.get(b.tagged_member_id) || null : null,
+      like_count: likeCounts.get(b.id) || 0,
+      liked_by_me: myLikes.has(b.id),
+    })));
     setLoading(false);
-  }, [family?.id]);
+  }, [family?.id, user]);
 
   useEffect(() => { fetchBlessings(); }, [fetchBlessings]);
 
@@ -52,13 +109,36 @@ export default function WisdomZone() {
       user_id: user.id,
       family_id: family.id,
       content: blessing.trim(),
+      tagged_member_id: taggedMember?.id || null,
     });
     if (error) { toast.error('Failed to send blessing'); setSending(false); return; }
     toast.success('Blessing sent 🙏');
     setBlessing('');
+    setTaggedMember(null);
     setSending(false);
     fetchBlessings();
   };
+
+  const toggleLike = async (blessingId: string, currentlyLiked: boolean) => {
+    if (!user) return;
+    // Optimistic update
+    setBlessings(prev => prev.map(b =>
+      b.id === blessingId
+        ? { ...b, liked_by_me: !currentlyLiked, like_count: b.like_count + (currentlyLiked ? -1 : 1) }
+        : b
+    ));
+
+    if (currentlyLiked) {
+      await supabase.from('blessing_likes').delete().eq('blessing_id', blessingId).eq('user_id', user.id);
+    } else {
+      await supabase.from('blessing_likes').insert({ blessing_id: blessingId, user_id: user.id });
+    }
+  };
+
+  const filteredMembers = members.filter(m =>
+    m.user_id !== user?.id &&
+    m.display_name.toLowerCase().includes(memberSearch.toLowerCase())
+  );
 
   const getYouTubeId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?\s]+)/);
@@ -93,20 +173,92 @@ export default function WisdomZone() {
           <h2 className="font-display font-semibold text-sm text-wisdom-accent uppercase tracking-wide">
             Share a Blessing
           </h2>
+
+          {/* Tagged person chip */}
+          {taggedMember && (
+            <div className="flex items-center gap-2 bg-wisdom/20 rounded-lg px-3 py-1.5 w-fit">
+              <AtSign size={14} className="text-wisdom-accent" />
+              <span className="font-body text-sm text-foreground">{taggedMember.display_name}</span>
+              <button
+                onClick={() => setTaggedMember(null)}
+                className="text-muted-foreground hover:text-foreground text-xs ml-1"
+              >✕</button>
+            </div>
+          )}
+
           <textarea
+            ref={textareaRef}
             value={blessing}
             onChange={(e) => setBlessing(e.target.value)}
-            placeholder="Write your daily blessing..."
+            placeholder={taggedMember ? `Write a blessing for ${taggedMember.display_name}...` : 'Write your daily blessing...'}
             className="w-full p-3 rounded-xl bg-popover border border-wisdom/60 font-body text-sm text-foreground placeholder:text-muted-foreground resize-none h-16 focus:outline-none focus:ring-2 focus:ring-wisdom-accent/30"
             maxLength={300}
           />
-          <button
-            onClick={sendBlessing}
-            disabled={!blessing.trim() || sending}
-            className="w-full py-2.5 bg-wisdom-accent text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
-          >
-            <Send size={14} /> {sending ? 'Sending...' : 'Send Blessing'}
-          </button>
+
+          <div className="flex gap-2">
+            {/* Tag button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMemberPicker(!showMemberPicker)}
+                className={`px-3 py-2.5 rounded-xl border font-display font-semibold text-sm flex items-center gap-1.5 transition-colors ${
+                  showMemberPicker || taggedMember
+                    ? 'border-wisdom-accent bg-wisdom/20 text-wisdom-accent'
+                    : 'border-wisdom/60 bg-popover text-muted-foreground'
+                }`}
+              >
+                <AtSign size={14} /> Tag
+              </button>
+
+              {/* Member picker dropdown */}
+              <AnimatePresence>
+                {showMemberPicker && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="absolute bottom-full left-0 mb-2 w-56 bg-popover border border-border rounded-xl shadow-lg z-20 overflow-hidden"
+                  >
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search members..."
+                      className="w-full px-3 py-2 text-sm font-body border-b border-border bg-popover text-foreground placeholder:text-muted-foreground focus:outline-none"
+                      autoFocus
+                    />
+                    <div className="max-h-40 overflow-y-auto">
+                      {filteredMembers.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-3 font-body">No members found</p>
+                      ) : (
+                        filteredMembers.map(m => (
+                          <button
+                            key={m.id}
+                            onClick={() => {
+                              setTaggedMember(m);
+                              setShowMemberPicker(false);
+                              setMemberSearch('');
+                              textareaRef.current?.focus();
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm font-body text-foreground hover:bg-muted transition-colors"
+                          >
+                            {m.display_name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <button
+              onClick={sendBlessing}
+              disabled={!blessing.trim() || sending}
+              className="flex-1 py-2.5 bg-wisdom-accent text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
+            >
+              <Send size={14} /> {sending ? 'Sending...' : 'Send Blessing'}
+            </button>
+          </div>
         </div>
 
         {/* Blessings Feed */}
@@ -127,10 +279,35 @@ export default function WisdomZone() {
             blessings.map(b => (
               <div key={b.id} className="bg-popover rounded-xl p-3 border border-wisdom/50 shadow-sm">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-display font-semibold text-sm text-wisdom-accent">{b.display_name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-display font-semibold text-sm text-wisdom-accent">{b.display_name}</span>
+                    {b.tagged_name && (
+                      <span className="text-xs text-muted-foreground font-body">
+                        → <span className="text-wisdom-accent font-semibold">@{b.tagged_name}</span>
+                      </span>
+                    )}
+                  </div>
                   <span className="text-xs text-muted-foreground font-body">{timeAgo(b.created_at)}</span>
                 </div>
-                <p className="font-body text-sm text-foreground leading-relaxed">{b.content}</p>
+                <p className="font-body text-sm text-foreground leading-relaxed mb-2">{b.content}</p>
+                <button
+                  onClick={() => toggleLike(b.id, b.liked_by_me)}
+                  className="flex items-center gap-1.5 group"
+                >
+                  <Heart
+                    size={16}
+                    className={`transition-colors ${
+                      b.liked_by_me
+                        ? 'fill-destructive text-destructive'
+                        : 'text-muted-foreground group-hover:text-destructive'
+                    }`}
+                  />
+                  {b.like_count > 0 && (
+                    <span className={`text-xs font-body ${b.liked_by_me ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {b.like_count}
+                    </span>
+                  )}
+                </button>
               </div>
             ))
           )}
