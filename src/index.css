@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Shell Palette - Warm Parchment */
-    --background: 30 27% 94%; /* #F4F1EC */
-    --foreground: 0 0% 29%; /* #4A4A4A Charcoal */
+    /* Shell Palette */
+    --background: 30 27% 94%;
+    --foreground: 0 0% 29%;
 
     --card: 30 27% 94%;
     --card-foreground: 0 0% 29%;
@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 29%;
 
-    --primary: 211 100% 50%; /* #007BFF Action Blue */
+    --primary: 330 80% 55%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 30 20% 88%;
@@ -33,29 +33,33 @@
 
     --border: 30 15% 85%;
     --input: 30 15% 85%;
-    --ring: 211 100% 50%;
+    --ring: 330 80% 55%;
 
     --radius: 1rem;
 
-    /* Zone: Kids */
-    --kids-primary: 44 100% 62%;
-    --kids-accent: 348 90% 55%;
-    --kids-bg: 44 100% 92%;
+    /* Home shell gradient */
+    --shell-from: 15 90% 62%;
+    --shell-to: 340 80% 58%;
 
-    /* Zone: IPL Arena */
-    --arena-primary: 220 60% 22%;
+    /* Zone: Kids - Purple/Magenta */
+    --kids-primary: 280 70% 60%;
+    --kids-accent: 300 80% 65%;
+    --kids-bg: 285 75% 58%;
+
+    /* Zone: IPL Arena - Deep navy */
+    --arena-primary: 220 60% 18%;
     --arena-accent: 42 100% 55%;
-    --arena-bg: 220 50% 16%;
+    --arena-bg: 220 55% 20%;
 
-    /* Zone: Style Circle */
-    --style-primary: 330 55% 65%;
-    --style-accent: 330 60% 42%;
-    --style-bg: 330 40% 92%;
+    /* Zone: Style Circle - Pink */
+    --style-primary: 340 80% 70%;
+    --style-accent: 340 90% 55%;
+    --style-bg: 340 85% 72%;
 
-    /* Zone: Wisdom Well */
-    --wisdom-primary: 32 80% 55%;
-    --wisdom-accent: 24 75% 35%;
-    --wisdom-bg: 38 60% 93%;
+    /* Zone: Wisdom Well - Orange/Amber */
+    --wisdom-primary: 32 95% 55%;
+    --wisdom-accent: 32 100% 45%;
+    --wisdom-bg: 30 95% 58%;
 
     /* Bottom nav */
     --nav-bg: 0 0% 100%;

@@ -8,9 +8,9 @@ const ZONES = [
     subtitle: 'Play & Learn',
     emoji: '🎮',
     path: '/zone/kids',
-    bgClass: 'bg-kids-bg',
-    borderClass: 'border-kids',
-    textClass: 'text-foreground',
+    gradient: 'bg-gradient-to-br from-purple-500 via-fuchsia-500 to-pink-400',
+    textClass: 'text-white',
+    subtitleClass: 'text-white/80',
   },
   {
     id: 'arena',
@@ -18,9 +18,9 @@ const ZONES = [
     subtitle: 'Predict & Win',
     emoji: '🏏',
     path: '/zone/arena',
-    bgClass: 'bg-arena',
-    borderClass: 'border-arena-accent',
-    textClass: 'text-arena-accent',
+    gradient: 'bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800',
+    textClass: 'text-amber-400',
+    subtitleClass: 'text-slate-300',
   },
   {
     id: 'style',
@@ -28,9 +28,9 @@ const ZONES = [
     subtitle: 'Share & Inspire',
     emoji: '✨',
     path: '/zone/style',
-    bgClass: 'bg-style-bg',
-    borderClass: 'border-style',
-    textClass: 'text-style-accent',
+    gradient: 'bg-gradient-to-br from-pink-400 via-pink-300 to-rose-300',
+    textClass: 'text-white',
+    subtitleClass: 'text-white/80',
   },
   {
     id: 'wisdom',
@@ -38,9 +38,9 @@ const ZONES = [
     subtitle: 'Bless & Connect',
     emoji: '🪷',
     path: '/zone/wisdom',
-    bgClass: 'bg-wisdom-bg',
-    borderClass: 'border-wisdom',
-    textClass: 'text-wisdom-accent',
+    gradient: 'bg-gradient-to-br from-amber-400 via-orange-400 to-orange-500',
+    textClass: 'text-white',
+    subtitleClass: 'text-white/80',
   },
 ];
 
@@ -58,11 +58,11 @@ export default function HomeHub() {
           transition={{ delay: i * 0.1, type: 'spring', stiffness: 300, damping: 25 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => navigate(zone.path)}
-          className={`${zone.bgClass} rounded-2xl border-2 ${zone.borderClass} flex flex-col items-center justify-center gap-1.5 shadow-md hover:shadow-lg active:shadow-none transition-all`}
+          className={`${zone.gradient} rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-lg hover:shadow-xl active:shadow-none transition-all`}
         >
           <span className="text-3xl">{zone.emoji}</span>
           <span className={`font-display font-bold text-sm ${zone.textClass}`}>{zone.title}</span>
-          <span className="text-[11px] text-muted-foreground font-body">{zone.subtitle}</span>
+          <span className={`text-[11px] font-body ${zone.subtitleClass}`}>{zone.subtitle}</span>
         </motion.button>
       ))}
     </div>
