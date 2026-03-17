@@ -26,7 +26,7 @@ export default function AppHeader({ isHome = false }: { isHome?: boolean }) {
           onClick={() => hasMultipleFamilies && setShowSwitcher(!showSwitcher)}
           className="flex items-center gap-1"
         >
-          <h1 className="font-display font-bold text-lg text-foreground">
+          <h1 className={`font-display font-bold text-lg ${isHome ? 'text-white' : 'text-foreground'}`}>
             {family?.name || 'Family Adda'}
           </h1>
           {hasMultipleFamilies && (
