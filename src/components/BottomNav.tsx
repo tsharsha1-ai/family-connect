@@ -16,7 +16,7 @@ export default function BottomNav() {
   const { profile } = useAuth();
 
   // Check if we're in a zone (not home, calendar, or settings)
-  const isInZone = !['/', '/calendar', '/settings'].includes(location.pathname);
+  const isInZone = !['/', '/calendar', '/feed', '/settings'].includes(location.pathname);
   if (isInZone) return null;
 
   const personaAccent = profile?.role

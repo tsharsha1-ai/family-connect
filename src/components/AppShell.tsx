@@ -44,6 +44,7 @@ export default function AppShell() {
         <Routes>
           <Route path="/" element={<HomeHub />} />
           <Route path="/calendar" element={<FamilyCalendar />} />
+          <Route path="/feed" element={<FamilyFeed />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Suspense>
