@@ -418,6 +418,7 @@ export type Database = {
           endpoint: string
           family_id: string
           id: string
+          notify_on_activity: boolean
           p256dh: string
           user_id: string
         }
@@ -427,6 +428,7 @@ export type Database = {
           endpoint: string
           family_id: string
           id?: string
+          notify_on_activity?: boolean
           p256dh: string
           user_id: string
         }
@@ -436,6 +438,7 @@ export type Database = {
           endpoint?: string
           family_id?: string
           id?: string
+          notify_on_activity?: boolean
           p256dh?: string
           user_id?: string
         }
