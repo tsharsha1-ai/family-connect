@@ -13,6 +13,14 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const copyCode = () => {
+    if (family?.access_code) {
+      navigator.clipboard.writeText(family.access_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const activeMembership = memberships.find(m => m.family_id === profile?.family_id);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +53,6 @@ export default function SettingsPage() {
 
       const avatarUrl = `${publicUrl}?t=${Date.now()}`;
       
-      // Update family_members avatar
       const { error: updateError } = await supabase
         .from('family_members')
         .update({ avatar_url: avatarUrl })
@@ -126,7 +133,6 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-foreground font-body capitalize">{profile?.role}</p>
         </div>
 
-        {/* Families count */}
         {memberships.length > 1 && (
           <div className="bg-popover rounded-xl p-4 border border-border flex items-center gap-3">
             <Users size={20} className="text-primary" />
@@ -141,61 +147,47 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Push Notifications Toggle */}
+        {/* Notification Toggles */}
         {isSupported && (
           <div className="space-y-3">
+            {/* Event Reminders */}
             <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {isSubscribed ? (
-                  <Bell size={20} className="text-primary" />
-                ) : (
-                  <BellOff size={20} className="text-muted-foreground" />
-                )}
+                <Bell size={20} className={eventsEnabled ? 'text-primary' : 'text-muted-foreground'} />
                 <div>
                   <p className="font-display font-semibold text-sm text-foreground">Event Reminders</p>
                   <p className="text-xs text-muted-foreground font-body">
                     {permission === 'denied'
                       ? 'Blocked in browser settings'
-                      : 'Get notified before family events'}
+                      : 'Birthdays, anniversaries & travel'}
                   </p>
                 </div>
               </div>
               <Switch
-                checked={isSubscribed}
-                onCheckedChange={handleNotificationToggle}
+                checked={eventsEnabled}
+                onCheckedChange={toggleEventNotifications}
                 disabled={loading || permission === 'denied'}
               />
             </div>
 
-            {/* Activity Notifications Toggle */}
+            {/* Activity Updates */}
             <div className="bg-popover rounded-xl p-4 border border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <MessageSquare size={20} className={activityEnabled && isSubscribed ? 'text-primary' : 'text-muted-foreground'} />
+                <MessageSquare size={20} className={activityEnabled ? 'text-primary' : 'text-muted-foreground'} />
                 <div>
                   <p className="font-display font-semibold text-sm text-foreground">Activity Updates</p>
                   <p className="text-xs text-muted-foreground font-body">
-                    {!isSubscribed ? 'Enable event reminders first' : 'Posts, blessings, scores & polls'}
+                    {permission === 'denied'
+                      ? 'Blocked in browser settings'
+                      : 'Posts, blessings, scores & polls'}
                   </p>
                 </div>
               </div>
               <Switch
-                checked={activityEnabled && isSubscribed}
+                checked={activityEnabled}
                 onCheckedChange={toggleActivityNotifications}
-                disabled={loading || !isSubscribed}
+                disabled={loading || permission === 'denied'}
               />
             </div>
           </div>
         )}
-
-        {/* Sign Out */}
-        <button
-          onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-destructive text-destructive font-display font-semibold"
-        >
-          <LogOut size={18} />
-          Sign Out
-        </button>
-      </div>
-    </div>
-  );
-}
