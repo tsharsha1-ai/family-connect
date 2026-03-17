@@ -8,26 +8,10 @@ import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { user, family, profile, memberships, signOut, refreshProfile, setActiveFamily } = useAuth();
-  const { isSupported, isSubscribed, loading, subscribe, unsubscribe, permission, activityEnabled, toggleActivityNotifications } = usePushNotifications();
+  const { isSupported, loading, permission, activityEnabled, toggleActivityNotifications, eventsEnabled, toggleEventNotifications } = usePushNotifications();
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const copyCode = () => {
-    if (family?.access_code) {
-      navigator.clipboard.writeText(family.access_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleNotificationToggle = async () => {
-    if (isSubscribed) {
-      await unsubscribe();
-    } else {
-      await subscribe();
-    }
-  };
 
   const activeMembership = memberships.find(m => m.family_id === profile?.family_id);
 
